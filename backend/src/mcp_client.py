@@ -1,70 +1,86 @@
 
-# Define Tool and ListToolsResult for local use
 
-# Extended Tool TypedDict for local and remote tools
-
-# LocalTool as a class for attribute access (getattr)
-class LocalTool:
-    def __init__(self, name, description, function, type, inputSchema):
-        self.name = name
-        self.description = description
-        self.function = function
-        self.type = type
-        self.inputSchema = inputSchema
-
-class ListToolsResult:
-    def __init__(self, tools: list[LocalTool]):
-        self.tools = tools
-
+"""
+mcp_client.py: Defines MCPClient and MCPLocalClient for managing tool servers and local tools.
+Provides classes for tool listing and invocation.
+"""
+from typing import Any, Callable
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp import ClientSession
 from contextlib import AsyncExitStack
 
-class MCPClient:
-    def __init__(self, name, config):
-        self.name = name
-        self.config = config
-        self.session = None
-        self.exit_stack = AsyncExitStack()
-        self.stdio = None
-        self.write = None
-        self.initialized = False
+class LocalTool:
+    """Represents a local tool with metadata and callable function."""
+    def __init__(self, name: str, description: str, function: Callable[..., Any], type: str, inputSchema: dict[str, Any]) -> None:
+        """Initialize a LocalTool with name, description, function, type, and input schema."""
+        self.name: str = name
+        self.description: str = description
+        self.function: Callable[..., Any] = function
+        self.type: str = type
+        self.inputSchema: dict[str, Any] = inputSchema
 
-    async def connect(self):
-        command = self.config.get("command")
-        args = self.config.get("args", [])
-        params = StdioServerParameters(command=command, args=args, env=None)
+class ListToolsResult:
+    """Result wrapper for a list of LocalTool objects."""
+    def __init__(self, tools: list[LocalTool]) -> None:
+        """Initialize with a list of LocalTool objects."""
+        self.tools: list[LocalTool] = tools
+
+
+
+class MCPClient:
+    """Client for managing remote MCP tool servers via stdio transport."""
+    def __init__(self, name: str, config: dict[str, Any]) -> None:
+        """Initialize MCPClient with name and configuration."""
+        self.name: str = name
+        self.config: dict[str, Any] = config
+        self.session: Any = None
+        self.exit_stack: AsyncExitStack = AsyncExitStack()
+        self.stdio: Any = None
+        self.write: Any = None
+        self.initialized: bool = False
+
+    async def connect(self) -> None:
+        """Establish connection to the MCP server using stdio transport."""
+        command: str = self.config.get("command")
+        args: list[str] = self.config.get("args", [])
+        params: StdioServerParameters = StdioServerParameters(command=command, args=args, env=None)
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(params))
         self.stdio, self.write = stdio_transport
         self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
         await self.session.initialize()
         self.initialized = True
 
-    async def list_tools(self):
+    async def list_tools(self) -> Any:
+        """List available tools from the connected MCP server."""
         if not self.initialized:
             await self.connect()
         return await self.session.list_tools()
 
-    async def call_tool(self, tool_name, params):
+    async def call_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
+        """Call a tool on the MCP server by name with given parameters."""
         if not self.initialized:
             await self.connect()
         return await self.session.call_tool(tool_name, params)
     
 
 class MCPLocalClient:
-    def __init__(self, name, tools: list[LocalTool]):
-        self.name = name
-        self.tools = tools
-        self.my_tools = {tool.name: tool for tool in tools}
+    """Client for managing and invoking local tools."""
+    def __init__(self, name: str, tools: list[LocalTool]) -> None:
+        """Initialize MCPLocalClient with name and a list of LocalTool objects."""
+        self.name: str = name
+        self.tools: list[LocalTool] = tools
+        self.my_tools: dict[str, LocalTool] = {tool.name: tool for tool in tools}
 
-    async def connect(self):
+    async def connect(self) -> None:
+        """No-op for local client connection."""
         pass
 
-    async def list_tools(self):
-        # Return the correct type for lost-tools (ListToolsResult)
+    async def list_tools(self) -> ListToolsResult:
+        """Return a ListToolsResult containing all local tools."""
         return ListToolsResult(self.tools)
-    
-    async def call_tool(self, tool_name, params):
+
+    async def call_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
+        """Call a local tool by name with given parameters."""
         import inspect
         tool = self.my_tools.get(tool_name)
         if not tool:

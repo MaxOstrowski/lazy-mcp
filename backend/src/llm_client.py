@@ -1,3 +1,8 @@
+
+"""
+LLMClient: Handles interaction with Azure/OpenAI and MCP tool clients.
+Provides logging, tool initialization, and chat with tool support.
+"""
 import logging
 import os
 import json
@@ -11,27 +16,39 @@ import importlib.resources
 logging.basicConfig(level=logging.WARNING)
 
 
+from typing import Any, Dict, Coroutine, Optional
+
 class MemoryLogHandler(logging.Handler):
-    def __init__(self):
+    """In-memory log handler for collecting logs during LLMClient operations."""
+    def __init__(self) -> None:
+        """Initialize the memory log handler."""
         super().__init__()
-        self.records = []
-    def emit(self, record):
+        self.records: list[dict[str, str]] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Store a log record in memory."""
         self.records.append({
             "level": record.levelname,
             "message": record.getMessage(),
             "time": self.formatTime(record)
         })
-    def formatTime(self, record):
+
+    def formatTime(self, record: logging.LogRecord) -> str:
+        """Format the log record time as a string."""
         import datetime
         ct = datetime.datetime.fromtimestamp(record.created)
         return ct.strftime("%Y-%m-%d %H:%M:%S")
-    def get_and_clear_logs(self):
+
+    def get_and_clear_logs(self) -> list[dict[str, str]]:
+        """Return and clear all stored log records."""
         logs = self.records.copy()
         self.records.clear()
         return logs
 
 class LLMClient:
-    def __init__(self):
+    """Main client for LLM and MCP tool management and chat operations."""
+    def __init__(self) -> None:
+        """Initialize the LLMClient, load config, and set up logging and tools."""
         load_dotenv()
         self.api_key = os.getenv("AZURE_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
         self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("OPENAI_API_ENDPOINT")
@@ -101,11 +118,13 @@ class LLMClient:
         self.memory_handler.setFormatter(formatter)
         self.logger.addHandler(self.memory_handler)
 
-    def list_available_mcps(self):
+    def list_available_mcps(self) -> list[str]:
+        """List all available MCP clients from config."""
         self.logger.info(f"Listing available MCP clients {list(self.mcp_clients.keys())}")
         return list(self.mcp_clients_extern.keys())
 
-    async def load_mcp(self, mcp_name: str):
+    async def load_mcp(self, mcp_name: str) -> Any:
+        """Load an MCP client by name and initialize its tools."""
         self.logger.info(f"Loading MCP client '{mcp_name}'")
         if mcp_name in self.mcp_clients_extern:
             self.mcp_clients[mcp_name] = self.mcp_clients_extern[mcp_name]
@@ -115,14 +134,17 @@ class LLMClient:
                 "Error": f"MCP client '{mcp_name}' not found in configuration"
             })
 
-    def unload_mcp(self, mcp_name: str):
+    def unload_mcp(self, mcp_name: str) -> Optional[str]:
+        """Unload an MCP client by name."""
         self.logger.info(f"Unloading MCP client '{mcp_name}'")
         if mcp_name in self.mcp_clients:
             del self.mcp_clients[mcp_name]
+            return None
         else:
             return str({"Error": f"MCP client '{mcp_name}' is not loaded"})
 
-    async def initialize_tools(self):
+    async def initialize_tools(self) -> None:
+        """Initialize and collect available tools from all loaded MCP clients."""
         self.tools = defaultdict(list)
         for client_name, mcp_client in self.mcp_clients.items():
             tools = await mcp_client.list_tools()
@@ -137,12 +159,13 @@ class LLMClient:
                 })
             self.logger.info(f"Initialized tools for MCP client '{client_name}': {self.tools[client_name]}")
 
-    async def ask_llm_with_tools(self, prompt: str = None):
+    async def ask_llm_with_tools(self, prompt: Optional[str] = None) -> list[str]:
+        """Send a prompt to the LLM, handle tool calls, and return responses."""
         self.history.append({"role": "user", "content": prompt})
         tools_list = [tool for tools in self.tools.values() for tool in tools]
         self.logger.info(f"Tools available: {tools_list}")
         try:
-            ret = []
+            ret: list[str] = []
             while True:
                 response = self.client.chat.completions.create(
                     model=self.api_deployment,
@@ -183,5 +206,6 @@ class LLMClient:
         self.logger.info(f"Final responses: {ret}")
         return ret
 
-    def get_and_clear_logs(self):
+    def get_and_clear_logs(self) -> list[dict[str, str]]:
+        """Return and clear all logs from the memory handler."""
         return self.memory_handler.get_and_clear_logs()
