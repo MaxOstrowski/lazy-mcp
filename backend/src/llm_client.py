@@ -16,7 +16,7 @@ import importlib.resources
 logging.basicConfig(level=logging.WARNING)
 
 
-from typing import Any, Dict, Coroutine, Optional
+from typing import Any, Optional
 
 class MemoryLogHandler(logging.Handler):
     """In-memory log handler for collecting logs during LLMClient operations."""
