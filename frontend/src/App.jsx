@@ -1,42 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import SplitPane from 'react-split-pane';
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [logs, setLogs] = useState([]);
-  const [showLogs, setShowLogs] = useState(false);
-  const [logWidth, setLogWidth] = useState(40); // px, hidden by default
-  const minLogWidth = 40;
-  const maxLogWidth = 400;
-  const handleDrag = (e) => {
-    e.preventDefault();
-    document.body.style.cursor = 'ew-resize';
-    const startX = e.clientX;
-    const startWidth = logWidth;
-    function onMove(ev) {
-      let newWidth = startWidth - (ev.clientX - startX); // Invert direction
-      if (newWidth < minLogWidth) newWidth = minLogWidth;
-      if (newWidth > maxLogWidth) newWidth = maxLogWidth;
-      setLogWidth(newWidth);
-      setShowLogs(newWidth > minLogWidth);
+  // Remove showLogs logic
+  const messagesEndRef = useRef(null);
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-    function onUp() {
-      document.body.style.cursor = '';
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-  };
-  const handleClick = () => {
-    if (showLogs) {
-      setLogWidth(minLogWidth);
-      setShowLogs(false);
-    } else {
-      setLogWidth(300);
-      setShowLogs(true);
-    }
-  };
+  }, [messages]);
 
   // Fetch logs from backend
   const fetchLogs = async () => {
@@ -88,38 +63,34 @@ function App() {
 
   return (
     <div className="container">
-      <div className="chat-window">
-        <div className="messages">
-          {messages.map((msg, idx) => (
-            <div key={idx} className={msg.sender === 'user' ? 'user-msg' : 'api-msg'}>
-              <b>{msg.sender}:</b> {msg.text}
-            </div>
-          ))}
+      <SplitPane
+        split="vertical"
+        minSize={300}
+        defaultSize="100%"
+        style={{ height: '100vh' }}
+        pane2Style={{ transition: 'width 0.2s', height: '100%' }}
+      >
+        <div className="chat-window">
+          <div className="messages">
+            {messages.map((msg, idx) => (
+              <div key={idx} className={msg.sender === 'user' ? 'user-msg' : 'api-msg'}>
+                <b>{msg.sender}:</b> {msg.text}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+          <form className="input-form" onSubmit={sendMessage}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              autoFocus
+            />
+            <button type="submit">Send</button>
+          </form>
         </div>
-        <form className="input-form" onSubmit={sendMessage}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            autoFocus
-          />
-          <button type="submit">Send</button>
-        </form>
-      </div>
-      <div
-        className="log-resize-handle"
-        onMouseDown={handleDrag}
-        onClick={handleClick}
-        title={showLogs ? 'Hide logs (click) or resize (drag)' : 'Show logs (click) or resize (drag)'}
-      >
-        <div className="log-handle-marker" />
-      </div>
-      <div
-        className="log-window"
-        style={{ width: logWidth, minWidth: logWidth, maxWidth: logWidth }}
-      >
-        {showLogs && (
+        <div className="log-window">
           <div className="logs">
             <h4>Logs</h4>
             {logs.map((log, idx) => (
@@ -132,8 +103,8 @@ function App() {
               )
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      </SplitPane>
     </div>
   );
 }
