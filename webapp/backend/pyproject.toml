@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "lazy-mcp-webapp"
+version = "0.1.0"
+description = "Standalone desktop app for Lazy MCP using PyWebView"
+authors = ["Max Ostrowski"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+pywebview = "*"
+dotenv = "*"
+openai = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

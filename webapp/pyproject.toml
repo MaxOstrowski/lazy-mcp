@@ -1,0 +1,18 @@
+[tool.hatch.build.targets.wheel]
+packages = ["webapp"]
+[project]
+name = "lazy-mcp-webapp"
+version = "0.1.0"
+description = "Standalone desktop app for Lazy MCP using PyWebView"
+authors = [
+	{ name = "Max Ostrowski" }
+]
+dependencies = [
+	"pywebview",
+	"python-dotenv",
+	"openai"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

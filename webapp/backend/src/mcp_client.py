@@ -1,5 +1,3 @@
-
-
 """
 mcp_client.py: Defines MCPClient and MCPLocalClient for managing tool servers and local tools.
 Provides classes for tool listing and invocation.
@@ -24,8 +22,6 @@ class ListToolsResult:
     def __init__(self, tools: list[LocalTool]) -> None:
         """Initialize with a list of LocalTool objects."""
         self.tools: list[LocalTool] = tools
-
-
 
 class MCPClient:
     """Client for managing remote MCP tool servers via stdio transport."""
@@ -61,7 +57,6 @@ class MCPClient:
         if not self.initialized:
             await self.connect()
         return await self.session.call_tool(tool_name, params)
-    
 
 class MCPLocalClient:
     """Client for managing and invoking local tools."""

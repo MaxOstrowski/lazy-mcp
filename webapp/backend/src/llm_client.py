@@ -1,4 +1,3 @@
-
 """
 LLMClient: Handles interaction with Azure/OpenAI and MCP tool clients.
 Provides logging, tool initialization, and chat with tool support.
@@ -8,15 +7,13 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import AzureOpenAI, BadRequestError
-from mcp_client import MCPClient, MCPLocalClient, LocalTool
+from webapp.backend.src.mcp_client import MCPClient, MCPLocalClient, LocalTool
 from collections import defaultdict
 import importlib.resources
 
-
 logging.basicConfig(level=logging.WARNING)
 
-
-from typing import Any, Optional
+from typing import Any, Dict, Coroutine, Optional
 
 class MemoryLogHandler(logging.Handler):
     """In-memory log handler for collecting logs during LLMClient operations."""
