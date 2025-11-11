@@ -4,6 +4,39 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [logs, setLogs] = useState([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logWidth, setLogWidth] = useState(40); // px, hidden by default
+  const minLogWidth = 40;
+  const maxLogWidth = 400;
+  const handleDrag = (e) => {
+    e.preventDefault();
+    document.body.style.cursor = 'ew-resize';
+    const startX = e.clientX;
+    const startWidth = logWidth;
+    function onMove(ev) {
+      let newWidth = startWidth - (ev.clientX - startX); // Invert direction
+      if (newWidth < minLogWidth) newWidth = minLogWidth;
+      if (newWidth > maxLogWidth) newWidth = maxLogWidth;
+      setLogWidth(newWidth);
+      setShowLogs(newWidth > minLogWidth);
+    }
+    function onUp() {
+      document.body.style.cursor = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+  const handleClick = () => {
+    if (showLogs) {
+      setLogWidth(minLogWidth);
+      setShowLogs(false);
+    } else {
+      setLogWidth(300);
+      setShowLogs(true);
+    }
+  };
 
   // Fetch logs from backend
   const fetchLogs = async () => {
@@ -74,19 +107,32 @@ function App() {
           <button type="submit">Send</button>
         </form>
       </div>
-      <div className="log-window">
-        <div className="logs">
-          <h4>Logs</h4>
-          {logs.map((log, idx) => (
-            typeof log === 'string' ? (
-              <div key={idx} className="log-entry">{log}</div>
-            ) : (
-              <div key={idx} className={`log-entry log-${log.level ? log.level.toLowerCase() : 'info'}`}>
-                <b>[{log.level}]</b> {log.time}: {log.message}
-              </div>
-            )
-          ))}
-        </div>
+      <div
+        className="log-resize-handle"
+        onMouseDown={handleDrag}
+        onClick={handleClick}
+        title={showLogs ? 'Hide logs (click) or resize (drag)' : 'Show logs (click) or resize (drag)'}
+      >
+        <div className="log-handle-marker" />
+      </div>
+      <div
+        className="log-window"
+        style={{ width: logWidth, minWidth: logWidth, maxWidth: logWidth }}
+      >
+        {showLogs && (
+          <div className="logs">
+            <h4>Logs</h4>
+            {logs.map((log, idx) => (
+              typeof log === 'string' ? (
+                <div key={idx} className="log-entry">{log}</div>
+              ) : (
+                <div key={idx} className={`log-entry log-${log.level ? log.level.toLowerCase() : 'info'}`}>
+                  <b>[{log.level}]</b> {log.time}: {log.message}
+                </div>
+              )
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

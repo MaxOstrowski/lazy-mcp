@@ -5,6 +5,7 @@ body {
 .container {
   display: flex;
   height: 100vh;
+  flex-direction: row;
 }
 .chat-window {
   flex: 2;
@@ -43,11 +44,38 @@ body {
   color: #007bff;
 }
 .log-window {
-  flex: 1;
   background: #222;
   color: #eee;
-  padding: 16px;
   overflow-y: auto;
+  transition: width 0.2s;
+  min-width: 40px;
+  max-width: 400px;
+  width: 40px;
+  box-sizing: border-box;
+  padding: 16px 8px 16px 8px;
+  position: relative;
+  border-left: 1px solid #444;
+}
+.log-resize-handle {
+  width: 8px;
+  min-width: 8px;
+  max-width: 8px;
+  background: transparent;
+  cursor: ew-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+.log-handle-marker {
+  width: 4px;
+  height: 32px;
+  background: #888;
+  border-radius: 2px;
+  margin: auto;
+  position: relative;
+  box-shadow: 0 0 2px #222;
 }
 .logs {
   font-size: 14px;
