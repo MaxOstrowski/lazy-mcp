@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/chat': 'http://localhost:8000',
+      '/logs': 'http://localhost:8000',
     },
   },
 });

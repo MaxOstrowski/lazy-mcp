@@ -1,4 +1,3 @@
-from typing import List, Optional, TypedDict
 
 # Define Tool and ListToolsResult for local use
 
@@ -66,7 +65,12 @@ class MCPLocalClient:
         return ListToolsResult(self.tools)
     
     async def call_tool(self, tool_name, params):
+        import inspect
         tool = self.my_tools.get(tool_name)
         if not tool:
             raise ValueError(f"Tool {tool_name} not found")
-        return tool.function(**params)
+        fn = tool.function
+        if inspect.iscoroutinefunction(fn):
+            return await fn(**params)
+        else:
+            return fn(**params)
