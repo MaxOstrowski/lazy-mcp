@@ -23,10 +23,12 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  const handleSelectAgent = (name) => {
+
+  const handleSelectAgent = async (name) => {
     setAgent(name);
     setMenuOpen(false);
     setShowAgentInput(false);
+    await refreshAgents();
   };
 
   const handleCreateAgent = async () => {
@@ -40,9 +42,12 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
 
   return (
     <div className="chat-window">
+      <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2em', padding: '8px 0', background: '#f7f7f7', borderBottom: '1px solid #eee' }}>
+        Agent: <span style={{ color: '#2a7ae2' }}>{agent}</span>
+      </div>
       <div className="chat-header">
         <div className="menu-container" ref={menuRef}>
-          <button className="menu-btn" onClick={() => setMenuOpen(m => !m)} title="Menu">&#8942;</button>
+          <button className="menu-btn" onClick={async () => { await refreshAgents(); setMenuOpen(m => !m); }} title="Menu">&#8942;</button>
           {menuOpen && (
             <div className="menu-dropdown">
               <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>

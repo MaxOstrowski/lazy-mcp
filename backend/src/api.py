@@ -21,7 +21,6 @@ app.add_middleware(
 )
 
 
-
 # Global dictionary to hold all agent LLMClients
 agents: dict[str, LLMClient] = {}
 
@@ -30,14 +29,6 @@ async def get_agent(agent: str) -> LLMClient:
         agents[agent] = LLMClient(agent)
         await agents[agent].initialize_tools()
     return agents[agent]
-
-
-# Ensure agent_config is persisted on shutdown
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    """Persist agent_config on FastAPI shutdown."""
-    for llm in agents.values():
-        llm.save_agent_configuration()
 
 
 class ChatRequest(BaseModel):
@@ -52,12 +43,12 @@ class ChatResponse(BaseModel):
     reply: list[str]
 
 
-
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, agent: str = Query(..., description="Agent name/ID")) -> ChatResponse:
     """Chat endpoint: send a message to the LLM and get a reply."""
     llm = await get_agent(agent)
     reply: list[str] = await llm.ask_llm_with_tools(request.message)
+    llm.save_agent_configuration()
     return ChatResponse(reply=reply)
 
 
@@ -106,6 +97,7 @@ async def clear_history(agent: str = Query(..., description="Agent name/ID")) ->
     llm = await get_agent(agent)
     try:
         llm.clear_history()
+        llm.save_agent_configuration()
         return ClearHistoryResponse(success=True)
     except Exception:
         return ClearHistoryResponse(success=False)
