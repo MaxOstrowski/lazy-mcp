@@ -2,14 +2,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import SplitPane from 'react-split-pane';
 
-function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory }) {
+function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showAgentInput, setShowAgentInput] = useState(false);
+  const [newAgent, setNewAgent] = useState("");
   const menuRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
+        setShowAgentInput(false);
       }
     }
     if (menuOpen) {
@@ -20,6 +23,21 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  const handleSelectAgent = (name) => {
+    setAgent(name);
+    setMenuOpen(false);
+    setShowAgentInput(false);
+  };
+
+  const handleCreateAgent = async () => {
+    if (!newAgent.trim()) return;
+    setAgent(newAgent.trim());
+    setMenuOpen(false);
+    setShowAgentInput(false);
+    setNewAgent("");
+    await refreshAgents();
+  };
+
   return (
     <div className="chat-window">
       <div className="chat-header">
@@ -28,6 +46,30 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
           {menuOpen && (
             <div className="menu-dropdown">
               <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>
+              <div style={{ borderTop: '1px solid #eee', margin: '8px 0' }} />
+              <div style={{ padding: '0 8px 8px 8px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Open Agent</div>
+                <select value={agent} onChange={e => handleSelectAgent(e.target.value)} style={{ width: '100%' }}>
+                  {agents.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+                <button style={{ marginTop: 6, width: '100%' }} onClick={() => setShowAgentInput(v => !v)}>
+                  {showAgentInput ? 'Cancel' : 'New Agent...'}
+                </button>
+                {showAgentInput && (
+                  <div style={{ marginTop: 6 }}>
+                    <input
+                      type="text"
+                      value={newAgent}
+                      onChange={e => setNewAgent(e.target.value)}
+                      placeholder="Agent name"
+                      style={{ width: '100%' }}
+                    />
+                    <button style={{ width: '100%', marginTop: 4 }} onClick={handleCreateAgent}>Create & Open</button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -77,27 +119,42 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [logs, setLogs] = useState([]);
+  const [agent, setAgent] = useState('default');
+  const [agents, setAgents] = useState(['default']);
   const messagesEndRef = useRef(null);
 
-  // Fetch chat history from backend on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const response = await fetch('/history');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        if (Array.isArray(data.messages)) {
-          setMessages(data.messages);
-        }
-      } catch (err) {
-        setLogs([{ level: 'ERROR', message: `Error fetching history: ${err.message}`, time: '' }]);
+  // Fetch agent list
+  const fetchAgents = useCallback(async () => {
+    try {
+      const response = await fetch('/agents');
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setAgents(data);
+        if (!data.includes(agent)) setAgent(data[0]);
       }
-    })();
-  }, []);
+    } catch (err) {
+      setAgents(['default']);
+    }
+  }, [agent]);
+
+  // Fetch chat history for current agent
+  const fetchHistory = useCallback(async (selectedAgent = agent) => {
+    try {
+      const response = await fetch(`/history?agent=${encodeURIComponent(selectedAgent)}`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (Array.isArray(data.messages)) {
+        setMessages(data.messages);
+      }
+    } catch (err) {
+      setLogs([{ level: 'ERROR', message: `Error fetching history: ${err.message}`, time: '' }]);
+    }
+  }, [agent]);
 
   const fetchLogs = useCallback(async () => {
     try {
-      const response = await fetch('/logs');
+      const response = await fetch(`/logs?agent=${encodeURIComponent(agent)}`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       setLogs(prevLogs =>
@@ -108,7 +165,18 @@ function App() {
     } catch (err) {
       setLogs([{ level: 'ERROR', message: `Error fetching logs: ${err.message}`, time: '' }]);
     }
+  }, [agent]);
+
+  // On mount, fetch agents and history
+  useEffect(() => {
+    fetchAgents();
+    fetchHistory('default');
   }, []);
+
+  // When agent changes, fetch history
+  useEffect(() => {
+    fetchHistory(agent);
+  }, [agent, fetchHistory]);
 
   useEffect(() => {
     fetchLogs();
@@ -123,10 +191,10 @@ function App() {
   const sendMessage = async e => {
     e.preventDefault();
     if (!input.trim()) return;
-  setMessages(msgs => [...msgs, { role: 'user', content: input }]);
+    setMessages(msgs => [...msgs, { role: 'user', content: input }]);
     setInput('');
     try {
-      const response = await fetch('/chat', {
+      const response = await fetch(`/chat?agent=${encodeURIComponent(agent)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input }),
@@ -148,7 +216,7 @@ function App() {
 
   const handleClearHistory = async () => {
     try {
-      const response = await fetch('/clear_history', { method: 'POST' });
+      const response = await fetch(`/clear_history?agent=${encodeURIComponent(agent)}`, { method: 'POST' });
       const data = await response.json();
       if (data.success) {
         setMessages([]);
@@ -176,6 +244,10 @@ function App() {
           sendMessage={sendMessage}
           messagesEndRef={messagesEndRef}
           onClearHistory={handleClearHistory}
+          agent={agent}
+          setAgent={setAgent}
+          agents={agents}
+          refreshAgents={fetchAgents}
         />
         <LogWindow logs={logs} />
       </SplitPane>

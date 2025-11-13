@@ -1,3 +1,4 @@
+
 """
 LLMClient: Handles interaction with Azure/OpenAI and MCP tool clients.
 Provides logging, tool initialization, and chat with tool support.
@@ -13,6 +14,7 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from mcp_client import AgentConfig, LocalTool, MCPClient, MCPLocalClient, Message
 from openai import AzureOpenAI, BadRequestError
+from config_utils import get_config_path
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -55,7 +57,7 @@ class MemoryLogHandler(logging.Handler):
 class LLMClient:
     """Main client for LLM and MCP tool management and chat operations."""
 
-    def __init__(self) -> None:
+    def __init__(self, agent_name: str = "default") -> None:
         """Initialize the LLMClient, load config, and set up logging and tools."""
         load_dotenv()
         self._set_logger()
@@ -73,11 +75,12 @@ class LLMClient:
             azure_endpoint=self.azure_endpoint,
         )
         self.mcp_clients = {}
+        self.agent_name = agent_name
         self.agent_config = AgentConfig(servers={})
-        with importlib.resources.files(__package__ or "src").joinpath(
-            "..", "agent_config.json"
-        ).open("r") as f:
-            self.agent_config = AgentConfig(**json.load(f))
+        config_path = get_config_path(self.agent_name)
+        if config_path.exists():
+            with config_path.open("r") as f:
+                self.agent_config = AgentConfig(**json.load(f))
         self.tools = defaultdict(list)
         if not self.agent_config.history:
             self.clear_history()
@@ -160,9 +163,7 @@ class LLMClient:
 
     def save_agent_configuration(self):
         try:
-            config_path = importlib.resources.files(__package__ or "src").joinpath(
-                "..", "agent_config.json"
-            )
+            config_path = get_config_path(self.agent_name)
             with config_path.open("w") as f:
                 f.write(self.agent_config.model_dump_json(indent=2))
         except Exception as e:
@@ -231,7 +232,8 @@ class LLMClient:
                 )
                 message = response.choices[0].message
                 self.agent_config.history.append(Message(**message.model_dump()))
-                ret.append(message.content or "")
+                if message.content:
+                    ret.append(message.content)
 
                 # Handle tool calls if present
                 if hasattr(message, "tool_calls") and message.tool_calls:

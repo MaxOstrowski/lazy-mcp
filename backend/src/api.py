@@ -5,10 +5,11 @@ Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
 from pydantic import BaseModel
+from config_utils import list_available_agents
 
 app = FastAPI()
 app.add_middleware(
@@ -20,21 +21,23 @@ app.add_middleware(
 )
 
 
-llm = LLMClient()
 
+# Global dictionary to hold all agent LLMClients
+agents: dict[str, LLMClient] = {}
 
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize LLM tools on FastAPI startup."""
-    await llm.initialize_tools()
+async def get_agent(agent: str) -> LLMClient:
+    if agent not in agents:
+        agents[agent] = LLMClient(agent)
+        await agents[agent].initialize_tools()
+    return agents[agent]
 
 
 # Ensure agent_config is persisted on shutdown
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     """Persist agent_config on FastAPI shutdown."""
-    llm.save_agent_configuration()
+    for llm in agents.values():
+        llm.save_agent_configuration()
 
 
 class ChatRequest(BaseModel):
@@ -51,8 +54,9 @@ class ChatResponse(BaseModel):
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest, agent: str = Query(..., description="Agent name/ID")) -> ChatResponse:
     """Chat endpoint: send a message to the LLM and get a reply."""
+    llm = await get_agent(agent)
     reply: list[str] = await llm.ask_llm_with_tools(request.message)
     return ChatResponse(reply=reply)
 
@@ -72,8 +76,9 @@ class LogsResponse(BaseModel):
 
 
 @app.get("/logs", response_model=LogsResponse)
-async def get_logs() -> LogsResponse:
+async def get_logs(agent: str = Query(..., description="Agent name/ID")) -> LogsResponse:
     """Logs endpoint: retrieve and format logs from the LLM client."""
+    llm = await get_agent(agent)
     try:
         log_entries: list[Any] = llm.get_and_clear_logs()
         logs: list[LogEntry] = [
@@ -96,8 +101,9 @@ class ClearHistoryResponse(BaseModel):
 
 
 @app.post("/clear_history", response_model=ClearHistoryResponse)
-async def clear_history() -> ClearHistoryResponse:
+async def clear_history(agent: str = Query(..., description="Agent name/ID")) -> ClearHistoryResponse:
     """Endpoint to clear the conversation history."""
+    llm = await get_agent(agent)
     try:
         llm.clear_history()
         return ClearHistoryResponse(success=True)
@@ -113,11 +119,17 @@ class HistoryResponse(BaseModel):
     messages: list[HistoryMessage]
 
 @app.get("/history", response_model=HistoryResponse)
-async def get_history() -> HistoryResponse:
+async def get_history(agent: str = Query(..., description="Agent name/ID")) -> HistoryResponse:
     """Endpoint to get the current conversation history."""
+    llm = await get_agent(agent)
     messages = []
     assert llm.agent_config.history
     for msg in llm.agent_config.history[1:]:  # Skip system message
         if msg.content:
             messages.append(HistoryMessage(role=msg.role, content=msg.content))
     return HistoryResponse(messages=messages)
+
+
+@app.get("/agents", response_model=list[str])
+async def get_agents():
+    return list_available_agents()
