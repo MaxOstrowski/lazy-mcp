@@ -8,11 +8,16 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
     if (updated[serverName] && updated[serverName].functions && updated[serverName].functions[functionName]) {
       updated[serverName].functions[functionName].allowed = allowed;
       setServers(updated);
-      // PATCH or POST to backend to persist change
-      await fetch(`/servers?agent=${encodeURIComponent(agent)}`, {
-        method: 'POST',
+      // PATCH to backend to persist change
+      await fetch(`/servers/update_flag?agent=${encodeURIComponent(agent)}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ server: serverName, function: functionName, allowed }),
+        body: JSON.stringify({
+          server_name: serverName,
+          function_name: functionName,
+          flag_name: 'allowed',
+          value: allowed
+        }),
       });
     }
   };
@@ -36,16 +41,20 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
 
   // Toggle allowed flag for a server
   const handleServerAllowedChange = async (serverName, allowed) => {
-    // Patch the allowed flag in the backend (add endpoint if needed)
     const updated = { ...servers };
     if (updated[serverName]) {
       updated[serverName].allowed = allowed;
       setServers(updated);
-      // PATCH or POST to backend to persist change
-      await fetch(`/servers?agent=${encodeURIComponent(agent)}`, {
-        method: 'POST',
+      // PATCH to backend to persist change
+      await fetch(`/servers/update_flag?agent=${encodeURIComponent(agent)}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ server: serverName, allowed }),
+        body: JSON.stringify({
+          server_name: serverName,
+          function_name: '',
+          flag_name: 'allowed',
+          value: allowed
+        }),
       });
     }
   };

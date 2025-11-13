@@ -5,7 +5,7 @@ Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 
 from typing import Any
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
 from mcp_client import MCPServerConfig
@@ -160,4 +160,43 @@ async def get_servers(agent: str = Query(..., description="Agent name/ID")) -> S
     """Get the complete servers dict from the agent's configuration."""
     llm = await get_agent(agent)
     return ServersResponse(servers=llm.agent_config.servers)
+
+# Request model for updating a server or function flag
+class UpdateFlagRequest(BaseModel):
+    server_name: str
+    function_name: str = ""
+    flag_name: str
+    value: Any
+
+# Response model for update flag
+class UpdateFlagResponse(BaseModel):
+    success: bool
+    detail: str = ""
+
+# Endpoint to update a flag for a server or function
+@app.patch("/servers/update_flag", response_model=UpdateFlagResponse)
+async def update_flag(
+    agent: str = Query(..., description="Agent name/ID"),
+    request: UpdateFlagRequest = Body(...)
+) -> UpdateFlagResponse:
+    """Update a flag for a server or function. If function_name is empty, update the server flag; otherwise, update the function flag."""
+    llm = await get_agent(agent)
+    try:
+        servers = llm.agent_config.servers
+        if request.server_name not in servers:
+            return UpdateFlagResponse(success=False, detail="Server not found")
+        server = servers[request.server_name]
+        if request.function_name:
+            # Update flag in function
+            if not server.functions or request.function_name not in server.functions:
+                return UpdateFlagResponse(success=False, detail="Function not found")
+            func = server.functions[request.function_name]
+            setattr(func, request.flag_name, request.value)
+        else:
+            # Update flag in server
+            setattr(server, request.flag_name, request.value)
+        llm.save_agent_configuration()
+        return UpdateFlagResponse(success=True)
+    except Exception as e:
+        return UpdateFlagResponse(success=False, detail=str(e))
 

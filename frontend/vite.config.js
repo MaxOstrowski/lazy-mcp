@@ -12,6 +12,7 @@ export default defineConfig({
       '/agents': 'http://localhost:8000',
       '/agent': 'http://localhost:8000',
       '/servers': 'http://localhost:8000',
+      '/servers/update_flag': 'http://localhost:8000',
     },
   },
 });
