@@ -1,4 +1,3 @@
-
 """
 LLMClient: Handles interaction with Azure/OpenAI and MCP tool clients.
 Provides logging, tool initialization, and chat with tool support.
@@ -8,9 +7,11 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import AzureOpenAI, BadRequestError
-from mcp_client import MCPClient, MCPLocalClient, LocalTool
+from mcp_client import MCPClient, MCPLocalClient, LocalTool, Message
 from collections import defaultdict
 import importlib.resources
+from mcp_client import AgentConfig
+import inspect
 
 
 logging.basicConfig(level=logging.WARNING)
@@ -47,6 +48,9 @@ class MemoryLogHandler(logging.Handler):
 
 class LLMClient:
     """Main client for LLM and MCP tool management and chat operations."""
+
+   
+
     def __init__(self) -> None:
         """Initialize the LLMClient, load config, and set up logging and tools."""
         load_dotenv()
@@ -60,12 +64,13 @@ class LLMClient:
             azure_endpoint=self.azure_endpoint
         )
         self.mcp_clients = {}
-        with importlib.resources.files(__package__ or "src").joinpath("..", "mcp_config.json").open("r") as f:
-            self.mcp_config = json.load(f)
-        self.mcp_clients_extern = {name: MCPClient(name, cfg) for name, cfg in self.mcp_config["servers"].items()}
+        self.agent_config = AgentConfig(servers={})
+        with importlib.resources.files(__package__ or "src").joinpath("..", "agent_config.json").open("r") as f:
+            self.agent_config = AgentConfig(**json.load(f))
         self.tools = defaultdict(list)
-        self.history = []
-        import inspect
+        if not self.agent_config.history:
+            self.agent_config.history = [Message(role="system", content=self.agent_config.description)]
+
         def bind_function(fn):
             async def wrapper(*args, **kwargs):
                 if inspect.iscoroutinefunction(fn):
@@ -118,16 +123,27 @@ class LLMClient:
         self.memory_handler.setFormatter(formatter)
         self.logger.addHandler(self.memory_handler)
 
+    def save_agent_configuration(self):
+        try:
+            config_path = importlib.resources.files(__package__ or "src").joinpath("..", "agent_config.json")
+            with config_path.open("w") as f:
+                f.write(self.agent_config.model_dump_json(indent=2))
+        except Exception as e:
+            if hasattr(self, 'logger'):
+                self.logger.error(f"Failed to write agent_config: {e}")
+            else:
+                print(f"Failed to write agent_config: {e}")
+
     def list_available_mcps(self) -> list[str]:
         """List all available MCP clients from config."""
-        self.logger.info(f"Listing available MCP clients {list(self.mcp_clients.keys())}")
-        return list(self.mcp_clients_extern.keys())
+        self.logger.info(f"Listing available MCP clients {list(self.agent_config.servers.keys())}")
+        return list(self.agent_config.servers.keys())
 
     async def load_mcp(self, mcp_name: str) -> Any:
         """Load an MCP client by name and initialize its tools."""
         self.logger.info(f"Loading MCP client '{mcp_name}'")
-        if mcp_name in self.mcp_clients_extern:
-            self.mcp_clients[mcp_name] = self.mcp_clients_extern[mcp_name]
+        if mcp_name in self.agent_config.servers:
+            self.mcp_clients[mcp_name] = MCPClient(mcp_name, self.agent_config.servers[mcp_name])
             return await self.initialize_tools()
         else:
             return str({
@@ -161,7 +177,7 @@ class LLMClient:
 
     async def ask_llm_with_tools(self, prompt: Optional[str] = None) -> list[str]:
         """Send a prompt to the LLM, handle tool calls, and return responses."""
-        self.history.append({"role": "user", "content": prompt})
+        self.agent_config.history.append(Message(role="user", content=prompt))
         tools_list = [tool for tools in self.tools.values() for tool in tools]
         self.logger.info(f"Tools available: {tools_list}")
         try:
@@ -169,15 +185,14 @@ class LLMClient:
             while True:
                 response = self.client.chat.completions.create(
                     model=self.api_deployment,
-                    messages=self.history,
+                    messages=self.agent_config.history,
                     tools=tools_list,
                     tool_choice="auto",
                     parallel_tool_calls=False,
                 )
                 message = response.choices[0].message
-                self.history.append(message)
-                if message.content:
-                    ret.append(message.content)
+                self.agent_config.history.append(Message(**message.model_dump()))
+                ret.append(message.content or "")
 
                 self.logger.info(f"LLM response: {message}")
 
@@ -193,11 +208,7 @@ class LLMClient:
                                     self.logger.info(f"Calling tool '{tool_name}' with args: {tool_args}")
                                     tool_result = await mcp_client.call_tool(tool_name, json.loads(tool_args))
                                     self.logger.info(f"Tool '{tool_name}' returned: {tool_result}")
-                                    self.history.append({
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "content": str(tool_result)
-                                    })
+                                    self.agent_config.history.append(Message(role="tool", tool_call_id=getattr(tool_call, 'id', None), content=str(tool_result)))
                 else:
                     break
         except BadRequestError as e:

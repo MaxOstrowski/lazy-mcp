@@ -19,12 +19,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 llm = LLMClient()
 
 @app.on_event("startup")
 async def startup_event() -> None:
     """Initialize LLM tools on FastAPI startup."""
     await llm.initialize_tools()
+
+
+# Ensure agent_config is persisted on shutdown
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """Persist agent_config on FastAPI shutdown."""
+    llm.save_agent_configuration()
 
 
 class ChatRequest(BaseModel):

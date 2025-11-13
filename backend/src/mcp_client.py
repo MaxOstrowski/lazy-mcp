@@ -1,13 +1,13 @@
-
-
 """
 mcp_client.py: Defines MCPClient and MCPLocalClient for managing tool servers and local tools.
 Provides classes for tool listing and invocation.
 """
-from typing import Any, Callable
+
+from typing import Any, Callable, Optional
 from mcp.client.stdio import StdioServerParameters, stdio_client
 from mcp import ClientSession
 from contextlib import AsyncExitStack
+from pydantic import BaseModel, Field
 
 class LocalTool:
     """Represents a local tool with metadata and callable function."""
@@ -27,12 +27,37 @@ class ListToolsResult:
 
 
 
+
+# Pydantic models for config
+class MCPServerConfig(BaseModel):
+    type: str
+    command: str
+    args: Optional[list[str]] = Field(default_factory=list)
+    gallery: Optional[str] = None
+    version: Optional[str] = None
+
+
+class Message(BaseModel):
+    role: str
+    content: Optional[str] = None
+    refusal: Optional[Any] = None
+    annotations: Optional[list[Any]] = Field(default_factory=list)
+    audio: Optional[Any] = None
+    function_call: Optional[Any] = None
+    tool_calls: Optional[Any] = None
+    tool_call_id: Optional[str] = None
+
+class AgentConfig(BaseModel):
+    description: str = ""
+    servers: dict[str, MCPServerConfig]
+    history: Optional[list[Message]] = Field(default_factory=list)
+
 class MCPClient:
     """Client for managing remote MCP tool servers via stdio transport."""
-    def __init__(self, name: str, config: dict[str, Any]) -> None:
+    def __init__(self, name: str, config: MCPServerConfig):
         """Initialize MCPClient with name and configuration."""
         self.name: str = name
-        self.config: dict[str, Any] = config
+        self.config: MCPServerConfig = config
         self.session: Any = None
         self.exit_stack: AsyncExitStack = AsyncExitStack()
         self.stdio: Any = None
@@ -41,8 +66,8 @@ class MCPClient:
 
     async def connect(self) -> None:
         """Establish connection to the MCP server using stdio transport."""
-        command: str = self.config.get("command")
-        args: list[str] = self.config.get("args", [])
+        command: str = self.config.command
+        args: list[str] = self.config.args or []
         params: StdioServerParameters = StdioServerParameters(command=command, args=args, env=None)
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(params))
         self.stdio, self.write = stdio_transport
