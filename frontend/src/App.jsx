@@ -2,9 +2,36 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import SplitPane from 'react-split-pane';
 
-function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef }) {
+function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
   return (
     <div className="chat-window">
+      <div className="chat-header">
+        <div className="menu-container" ref={menuRef}>
+          <button className="menu-btn" onClick={() => setMenuOpen(m => !m)} title="Menu">&#8942;</button>
+          {menuOpen && (
+            <div className="menu-dropdown">
+              <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>
+            </div>
+          )}
+        </div>
+      </div>
       <div className="messages">
         {messages.map((msg, idx) => (
           <div key={idx} className={msg.sender === 'user' ? 'user-msg' : 'api-msg'}>
@@ -103,6 +130,20 @@ function App() {
     }
   };
 
+  const handleClearHistory = async () => {
+    try {
+      const response = await fetch('/clear_history', { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        setMessages([]);
+      } else {
+        setLogs([{ level: 'ERROR', message: 'Failed to clear history', time: '' }]);
+      }
+    } catch (err) {
+      setLogs([{ level: 'ERROR', message: `Error clearing history: ${err.message}`, time: '' }]);
+    }
+  };
+
   return (
     <div className="container">
       <SplitPane
@@ -118,6 +159,7 @@ function App() {
           setInput={setInput}
           sendMessage={sendMessage}
           messagesEndRef={messagesEndRef}
+          onClearHistory={handleClearHistory}
         />
         <LogWindow logs={logs} />
       </SplitPane>

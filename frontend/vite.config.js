@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       '/chat': 'http://localhost:8000',
       '/logs': 'http://localhost:8000',
+      '/clear_history': 'http://localhost:8000',
     },
   },
 });

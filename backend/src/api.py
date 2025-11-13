@@ -23,6 +23,7 @@ app.add_middleware(
 llm = LLMClient()
 
 
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Initialize LLM tools on FastAPI startup."""
@@ -48,6 +49,14 @@ class ChatResponse(BaseModel):
     reply: list[str]
 
 
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest) -> ChatResponse:
+    """Chat endpoint: send a message to the LLM and get a reply."""
+    reply: list[str] = await llm.ask_llm_with_tools(request.message)
+    return ChatResponse(reply=reply)
+
+
 class LogEntry(BaseModel):
     """Model for a single log entry."""
 
@@ -60,13 +69,6 @@ class LogsResponse(BaseModel):
     """Response model for logs endpoint."""
 
     logs: list[LogEntry]
-
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
-    """Chat endpoint: send a message to the LLM and get a reply."""
-    reply: list[str] = await llm.ask_llm_with_tools(request.message)
-    return ChatResponse(reply=reply)
 
 
 @app.get("/logs", response_model=LogsResponse)
@@ -87,3 +89,17 @@ async def get_logs() -> LogsResponse:
                 )
             ]
         )
+    
+class ClearHistoryResponse(BaseModel):
+    """Response model for clear history endpoint."""
+    success: bool
+
+
+@app.post("/clear_history", response_model=ClearHistoryResponse)
+async def clear_history() -> ClearHistoryResponse:
+    """Endpoint to clear the conversation history."""
+    try:
+        llm.clear_history()
+        return ClearHistoryResponse(success=True)
+    except Exception:
+        return ClearHistoryResponse(success=False)

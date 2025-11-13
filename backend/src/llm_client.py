@@ -80,11 +80,15 @@ class LLMClient:
             self.agent_config = AgentConfig(**json.load(f))
         self.tools = defaultdict(list)
         if not self.agent_config.history:
-            self.agent_config.history = [
-                Message(role="system", content=self.agent_config.description)
-            ]
+            self.clear_history()
 
         self._init_local_tools()
+
+    def clear_history(self) -> None:
+        """Clear the conversation history."""
+        self.agent_config.history = [
+            Message(role="system", content=self.agent_config.description)
+        ]
 
     def _init_local_tools(self) -> None:
         """Initialize local MCP client with built-in tools."""
@@ -162,21 +166,19 @@ class LLMClient:
             with config_path.open("w") as f:
                 f.write(self.agent_config.model_dump_json(indent=2))
         except Exception as e:
-            if hasattr(self, "logger"):
-                self.logger.error(f"Failed to write agent_config: {e}")
-            else:
-                print(f"Failed to write agent_config: {e}")
+            self.logger.error(f"Failed to write agent_config: {e}")
+
 
     def list_available_mcps(self) -> list[str]:
         """List all available MCP clients from config."""
-        self.logger.info(
+        self.logger.debug(
             f"Listing available MCP clients {list(self.agent_config.servers.keys())}"
         )
         return list(self.agent_config.servers.keys())
 
     async def load_mcp(self, mcp_name: str) -> Any:
         """Load an MCP client by name and initialize its tools."""
-        self.logger.info(f"Loading MCP client '{mcp_name}'")
+        self.logger.debug(f"Loading MCP client '{mcp_name}'")
         if mcp_name in self.agent_config.servers:
             self.mcp_clients[mcp_name] = MCPClient(
                 mcp_name, self.agent_config.servers[mcp_name]
@@ -187,7 +189,6 @@ class LLMClient:
 
     def unload_mcp(self, mcp_name: str) -> Optional[str]:
         """Unload an MCP client by name."""
-        self.logger.info(f"Unloading MCP client '{mcp_name}'")
         if mcp_name in self.mcp_clients:
             del self.mcp_clients[mcp_name]
             return None
@@ -210,7 +211,7 @@ class LLMClient:
                         },
                     }
                 )
-            self.logger.info(
+            self.logger.debug(
                 f"Initialized tools for MCP client '{client_name}': {self.tools[client_name]}"
             )
 
@@ -218,7 +219,6 @@ class LLMClient:
         """Send a prompt to the LLM, handle tool calls, and return responses."""
         self.agent_config.history.append(Message(role="user", content=prompt))
         tools_list = [tool for tools in self.tools.values() for tool in tools]
-        self.logger.info(f"Tools available: {tools_list}")
         try:
             ret: list[str] = []
             while True:
@@ -232,8 +232,6 @@ class LLMClient:
                 message = response.choices[0].message
                 self.agent_config.history.append(Message(**message.model_dump()))
                 ret.append(message.content or "")
-
-                self.logger.info(f"LLM response: {message}")
 
                 # Handle tool calls if present
                 if hasattr(message, "tool_calls") and message.tool_calls:
@@ -265,7 +263,6 @@ class LLMClient:
         except BadRequestError as e:
             self.logger.error(f"OpenAI content filter triggered: {e}")
 
-        self.logger.info(f"Final responses: {ret}")
         return ret
 
     def get_and_clear_logs(self) -> list[dict[str, str]]:
