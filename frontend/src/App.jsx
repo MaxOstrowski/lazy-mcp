@@ -1,11 +1,30 @@
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import SplitPane from 'react-split-pane';
 
-function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents }) {
+function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents, deleteAgent, setDeleteAgent, handleDeleteAgent }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newAgent, setNewAgent] = useState("");
   const menuRef = useRef(null);
+  const prevDeleteAgent = useRef("");
+  // Handle delete agent selection with confirmation
+  const handleDeleteAgentSelect = async (e) => {
+    const selected = e.target.value;
+    if (selected && selected !== "default" && selected !== prevDeleteAgent.current) {
+      // Show confirmation popup
+      if (window.confirm(`Are you sure you want to delete agent '${selected}'?`)) {
+        setDeleteAgent(selected);
+        await handleDeleteAgent(selected);
+        setDeleteAgent("");
+        prevDeleteAgent.current = ""; // Reset so confirmation shows again next time
+      } else {
+        setDeleteAgent("");
+        prevDeleteAgent.current = ""; // Reset so confirmation shows again next time
+      }
+    } else {
+      setDeleteAgent(selected);
+      prevDeleteAgent.current = selected;
+    }
+  };
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -52,7 +71,7 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
               <div style={{ borderTop: '1px solid #eee', margin: '8px 0' }} />
               <div style={{ padding: '0 8px 8px 8px' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Open Agent</div>
-                <select value={agent} onChange={e => handleSelectAgent(e.target.value)} style={{ width: '100%' }}>
+                <select value={agent} onChange={e => handleSelectAgent(e.target.value)} style={{ width: '100%', marginBottom: 8 }}>
                   {agents.map(a => (
                     <option key={a} value={a}>{a}</option>
                   ))}
@@ -63,8 +82,18 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                   onChange={e => setNewAgent(e.target.value)}
                   onKeyDown={handleNewAgentKeyDown}
                   placeholder="New agent name (Enter to switch)"
-                  style={{ width: '100%', marginTop: 8 }}
+                  style={{ width: '100%' }}
                 />
+              </div>
+              <div style={{ borderTop: '1px solid #eee', margin: '8px 0' }} />
+              <div style={{ padding: '0 8px 8px 8px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Delete Agent</div>
+                <select value={deleteAgent} onChange={handleDeleteAgentSelect} style={{ width: '100%' }}>
+                  <option value="">Select agent</option>
+                  {agents.filter(a => a !== "default").map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
               </div>
             </div>
           )}
@@ -112,12 +141,36 @@ function LogWindow({ logs }) {
 }
 
 function App() {
+  const [deleteAgent, setDeleteAgent] = useState("");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [logs, setLogs] = useState([]);
   const [agent, setAgent] = useState('default');
   const [agents, setAgents] = useState(['default']);
   const messagesEndRef = useRef(null);
+
+  // Delete selected agent (now takes agentName as argument)
+  const handleDeleteAgent = async (agentName) => {
+    if (!agentName || agentName === "default") return;
+    try {
+      const response = await fetch(`/agent?agent=${encodeURIComponent(agentName)}`, { method: 'DELETE' });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data.agents)) {
+          setAgents(data.agents);
+          // If the current agent was deleted, switch to default or first available
+          if (agentName === agent) {
+            setAgent(data.agents.find(a => a !== agentName) || "default");
+          }
+        } else {
+          // fallback: refetch
+          await fetchAgents();
+        }
+      }
+    } catch (err) {
+      // Optionally show error
+    }
+  };
 
   // Fetch agent list
   const fetchAgents = useCallback(async () => {
@@ -247,6 +300,9 @@ function App() {
           setAgent={setAgent}
           agents={agents}
           refreshAgents={fetchAgents}
+          deleteAgent={deleteAgent}
+          setDeleteAgent={setDeleteAgent}
+          handleDeleteAgent={handleDeleteAgent}
         />
         <LogWindow logs={logs} />
       </SplitPane>

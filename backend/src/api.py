@@ -9,7 +9,10 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
 from pydantic import BaseModel
-from config_utils import list_available_agents
+from config_utils import list_available_agents, get_config_path
+
+from fastapi import HTTPException
+
 
 app = FastAPI()
 app.add_middleware(
@@ -125,3 +128,24 @@ async def get_history(agent: str = Query(..., description="Agent name/ID")) -> H
 @app.get("/agents", response_model=list[str])
 async def get_agents():
     return list_available_agents()
+
+class DeleteAgentResponse(BaseModel):
+    success: bool
+    agents: list[str]
+
+
+# Delete agent endpoint
+@app.delete("/agent", response_model=DeleteAgentResponse)
+async def delete_agent(agent: str = Query(..., description="Agent name/ID")) -> DeleteAgentResponse:
+    """Delete the agent config file and remove from memory."""
+    config_path = get_config_path(agent)
+    try:
+        if config_path.exists():
+            config_path.unlink()
+        if agent in agents:
+            del agents[agent]
+        updated_agents = list_available_agents()
+        return DeleteAgentResponse(success=True, agents=updated_agents)
+    except Exception as e:
+        updated_agents = list_available_agents()
+        raise HTTPException(status_code=500, detail=f"Failed to delete agent: {e}")

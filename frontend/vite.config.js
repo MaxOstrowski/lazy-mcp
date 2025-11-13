@@ -10,6 +10,7 @@ export default defineConfig({
       '/clear_history': 'http://localhost:8000',
       '/history': 'http://localhost:8000',
       '/agents': 'http://localhost:8000',
+      '/agent': 'http://localhost:8000',
     },
   },
 });
