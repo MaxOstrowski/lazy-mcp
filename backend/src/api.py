@@ -103,3 +103,21 @@ async def clear_history() -> ClearHistoryResponse:
         return ClearHistoryResponse(success=True)
     except Exception:
         return ClearHistoryResponse(success=False)
+    
+
+class HistoryMessage(BaseModel):
+    role: str
+    content: str
+
+class HistoryResponse(BaseModel):
+    messages: list[HistoryMessage]
+
+@app.get("/history", response_model=HistoryResponse)
+async def get_history() -> HistoryResponse:
+    """Endpoint to get the current conversation history."""
+    messages = []
+    assert llm.agent_config.history
+    for msg in llm.agent_config.history[1:]:  # Skip system message
+        if msg.content:
+            messages.append(HistoryMessage(role=msg.role, content=msg.content))
+    return HistoryResponse(messages=messages)

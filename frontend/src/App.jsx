@@ -34,8 +34,8 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
       </div>
       <div className="messages">
         {messages.map((msg, idx) => (
-          <div key={idx} className={msg.sender === 'user' ? 'user-msg' : 'api-msg'}>
-            <b>{msg.sender}:</b> {msg.text}
+          <div key={idx} className={msg.role === 'user' ? 'user-msg' : 'api-msg'}>
+            <b>{msg.role}:</b> {msg.content}
           </div>
         ))}
         <div ref={messagesEndRef} />
@@ -79,6 +79,22 @@ function App() {
   const [logs, setLogs] = useState([]);
   const messagesEndRef = useRef(null);
 
+  // Fetch chat history from backend on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await fetch('/history');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        if (Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      } catch (err) {
+        setLogs([{ level: 'ERROR', message: `Error fetching history: ${err.message}`, time: '' }]);
+      }
+    })();
+  }, []);
+
   const fetchLogs = useCallback(async () => {
     try {
       const response = await fetch('/logs');
@@ -107,7 +123,7 @@ function App() {
   const sendMessage = async e => {
     e.preventDefault();
     if (!input.trim()) return;
-    setMessages(msgs => [...msgs, { sender: 'user', text: input }]);
+  setMessages(msgs => [...msgs, { role: 'user', content: input }]);
     setInput('');
     try {
       const response = await fetch('/chat', {
@@ -119,7 +135,7 @@ function App() {
       if (Array.isArray(data.reply)) {
         setMessages(msgs => [
           ...msgs,
-          ...data.reply.map(msg => ({ sender: 'api', text: msg })),
+          ...data.reply.map(msg => ({ role: 'assistant', content: msg })),
         ]);
       } else {
         throw new Error('API reply is not a list of messages');

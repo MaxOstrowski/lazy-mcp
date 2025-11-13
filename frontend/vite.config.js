@@ -8,6 +8,7 @@ export default defineConfig({
       '/chat': 'http://localhost:8000',
       '/logs': 'http://localhost:8000',
       '/clear_history': 'http://localhost:8000',
+      '/history': 'http://localhost:8000',
     },
   },
 });
