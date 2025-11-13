@@ -2,7 +2,53 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import SplitPane from 'react-split-pane';
 
 function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents, deleteAgent, setDeleteAgent, handleDeleteAgent }) {
+  // Toggle allowed flag for a function
+  const handleFunctionAllowedChange = async (serverName, functionName, allowed) => {
+    const updated = { ...servers };
+    if (updated[serverName] && updated[serverName].functions && updated[serverName].functions[functionName]) {
+      updated[serverName].functions[functionName].allowed = allowed;
+      setServers(updated);
+      // PATCH or POST to backend to persist change
+      await fetch(`/servers?agent=${encodeURIComponent(agent)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ server: serverName, function: functionName, allowed }),
+      });
+    }
+  };
   const [menuOpen, setMenuOpen] = useState(false);
+  const [servers, setServers] = useState({});
+  const [expandedServers, setExpandedServers] = useState({});
+
+  // Fetch servers when menu opens or agent changes
+  useEffect(() => {
+    if (menuOpen) {
+      fetch(`/servers?agent=${encodeURIComponent(agent)}`)
+        .then(res => res.json())
+        .then(data => setServers(data.servers || {}));
+    }
+  }, [menuOpen, agent]);
+
+  // Toggle expand/collapse for a server
+  const toggleExpandServer = (serverName) => {
+    setExpandedServers(prev => ({ ...prev, [serverName]: !prev[serverName] }));
+  };
+
+  // Toggle allowed flag for a server
+  const handleServerAllowedChange = async (serverName, allowed) => {
+    // Patch the allowed flag in the backend (add endpoint if needed)
+    const updated = { ...servers };
+    if (updated[serverName]) {
+      updated[serverName].allowed = allowed;
+      setServers(updated);
+      // PATCH or POST to backend to persist change
+      await fetch(`/servers?agent=${encodeURIComponent(agent)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ server: serverName, allowed }),
+      });
+    }
+  };
   const [newAgent, setNewAgent] = useState("");
   const menuRef = useRef(null);
   const prevDeleteAgent = useRef("");
@@ -66,36 +112,82 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
         <div className="menu-container" ref={menuRef}>
           <button className="menu-btn" onClick={async () => { await refreshAgents(); setMenuOpen(m => !m); }} title="Menu">&#8942;</button>
           {menuOpen && (
-            <div className="menu-dropdown">
-              <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>
-              <div className="menu-divider" />
-              <div className="menu-section">
-                <div className="menu-section-title">Open Agent</div>
-                <select className="menu-select" value={agent} onChange={e => handleSelectAgent(e.target.value)}>
-                  {agents.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-                <input
-                  className="menu-input"
-                  type="text"
-                  value={newAgent}
-                  onChange={e => setNewAgent(e.target.value)}
-                  onKeyDown={handleNewAgentKeyDown}
-                  placeholder="New agent name (Enter to switch)"
-                />
+              <div className="menu-dropdown">
+                <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>
+                <div className="menu-divider" />
+                <div className="menu-section">
+                  <div className="menu-section-title">Open Agent</div>
+                  <select className="menu-select" value={agent} onChange={e => handleSelectAgent(e.target.value)}>
+                    {agents.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  <span className="menu-agent-gap" />
+                  <input
+                    className="menu-input menu-input-wide"
+                    type="text"
+                    value={newAgent}
+                    onChange={e => setNewAgent(e.target.value)}
+                    onKeyDown={handleNewAgentKeyDown}
+                    placeholder="New agent name (Enter to switch)"
+                  />
+                </div>
+                <div className="menu-divider" />
+                <div className="menu-section">
+                  <div className="menu-section-title">Delete Agent</div>
+                  <select className="menu-select" value={deleteAgent} onChange={handleDeleteAgentSelect}>
+                    <option value="">Select agent</option>
+                    {agents.filter(a => a !== "default").map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="menu-divider" />
+                <div className="menu-section">
+                  <div className="menu-section-title">Servers</div>
+                  <div className="servers-list">
+                    {Object.entries(servers).map(([serverName, server]) => (
+                      <div key={serverName} className="server-item">
+                        <div className="server-label-row">
+                          <input
+                            type="checkbox"
+                            checked={server.allowed !== false}
+                            onChange={e => handleServerAllowedChange(serverName, e.target.checked)}
+                            onClick={e => e.stopPropagation()}
+                          />
+                          <span
+                            className="server-name clickable-server"
+                            onClick={() => toggleExpandServer(serverName)}
+                          >
+                            {serverName}
+                          </span>
+                          <span
+                            className="server-expand-toggle"
+                            onClick={e => { e.stopPropagation(); toggleExpandServer(serverName); }}
+                          >
+                            {expandedServers[serverName] ? '▼' : '▶'}
+                          </span>
+                        </div>
+                        {expandedServers[serverName] && server.functions && (
+                          <ul className="server-functions">
+                            {Object.entries(server.functions).map(([fname, f]) => (
+                              <li key={fname} className="function-item">
+                                <input
+                                  type="checkbox"
+                                  checked={f.allowed !== false}
+                                  onChange={e => handleFunctionAllowedChange(serverName, fname, e.target.checked)}
+                                  className="function-checkbox"
+                                />
+                                <span className="function-name" title={f.description || ''}>{fname}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="menu-divider" />
-              <div className="menu-section">
-                <div className="menu-section-title">Delete Agent</div>
-                <select className="menu-select" value={deleteAgent} onChange={handleDeleteAgentSelect}>
-                  <option value="">Select agent</option>
-                  {agents.filter(a => a !== "default").map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
           )}
         </div>
       </div>

@@ -1,3 +1,11 @@
+.menu-agent-gap {
+  display: inline-block;
+  width: 8px;
+}
+.menu-input-wide {
+  min-width: 32ch;
+  width: 32ch;
+}
 .chat-header {
   display: flex;
   justify-content: flex-end;
@@ -24,7 +32,12 @@
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   z-index: 10;
-  min-width: 120px;
+  min-width: 320px;
+  max-width: 480px;
+  width: max-content;
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: auto;
 }
 .menu-dropdown button {
   background: none;

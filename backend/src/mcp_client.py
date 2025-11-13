@@ -37,14 +37,21 @@ class ListToolsResult:
         """Initialize with a list of LocalTool objects."""
         self.tools: list[LocalTool] = tools
 
-
 # Pydantic models for config
+
+class Function(BaseModel):
+    description: str
+    parameters: dict[str, Any]
+    allowed: bool = True
+
 class MCPServerConfig(BaseModel):
     type: str
     command: str
     args: Optional[list[str]] = Field(default_factory=list)
     gallery: Optional[str] = None
     version: Optional[str] = None
+    functions: Optional[dict[str, Function]] = None
+    allowed: bool = True
 
 
 class Message(BaseModel):
@@ -98,7 +105,21 @@ class MCPClient:
         """List available tools from the connected MCP server."""
         if not self.initialized:
             await self.connect()
-        return await self.session.list_tools()
+        res = await self.session.list_tools()
+        # fill self.config functions
+        for tool in res.tools:
+            func = Function(
+                description=tool.description,
+                parameters=tool.inputSchema,
+            )
+            if self.config.functions is None:
+                self.config.functions = {}
+            # reset if changes are detected
+            if (tool.name not in self.config.functions 
+                or self.config.functions[tool.name].description != func.description
+                or self.config.functions[tool.name].parameters != func.parameters):
+                self.config.functions[tool.name] = func
+        return res
 
     async def call_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
         """Call a tool on the MCP server by name with given parameters."""

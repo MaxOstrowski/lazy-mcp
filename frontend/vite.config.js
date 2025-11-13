@@ -11,6 +11,7 @@ export default defineConfig({
       '/history': 'http://localhost:8000',
       '/agents': 'http://localhost:8000',
       '/agent': 'http://localhost:8000',
+      '/servers': 'http://localhost:8000',
     },
   },
 });

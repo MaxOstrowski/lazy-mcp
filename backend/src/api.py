@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
+from mcp_client import MCPServerConfig
 from pydantic import BaseModel
 from config_utils import list_available_agents, get_config_path
 
@@ -147,5 +148,16 @@ async def delete_agent(agent: str = Query(..., description="Agent name/ID")) -> 
         updated_agents = list_available_agents()
         return DeleteAgentResponse(success=True, agents=updated_agents)
     except Exception as e:
-        updated_agents = list_available_agents()
         raise HTTPException(status_code=500, detail=f"Failed to delete agent: {e}")
+    
+
+# Endpoint to return the complete servers dict from the AgentConfig
+class ServersResponse(BaseModel):
+    servers: dict[str, MCPServerConfig]
+
+@app.get("/servers", response_model=ServersResponse)
+async def get_servers(agent: str = Query(..., description="Agent name/ID")) -> ServersResponse:
+    """Get the complete servers dict from the agent's configuration."""
+    llm = await get_agent(agent)
+    return ServersResponse(servers=llm.agent_config.servers)
+
