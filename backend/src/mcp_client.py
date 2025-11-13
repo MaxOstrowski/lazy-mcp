@@ -3,15 +3,25 @@ mcp_client.py: Defines MCPClient and MCPLocalClient for managing tool servers an
 Provides classes for tool listing and invocation.
 """
 
-from typing import Any, Callable, Optional
-from mcp.client.stdio import StdioServerParameters, stdio_client
-from mcp import ClientSession
 from contextlib import AsyncExitStack
+from typing import Any, Callable, Optional
+
+from mcp import ClientSession
+from mcp.client.stdio import StdioServerParameters, stdio_client
 from pydantic import BaseModel, Field
+
 
 class LocalTool:
     """Represents a local tool with metadata and callable function."""
-    def __init__(self, name: str, description: str, function: Callable[..., Any], type: str, inputSchema: dict[str, Any]) -> None:
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        function: Callable[..., Any],
+        type: str,
+        inputSchema: dict[str, Any],
+    ) -> None:
         """Initialize a LocalTool with name, description, function, type, and input schema."""
         self.name: str = name
         self.description: str = description
@@ -19,13 +29,13 @@ class LocalTool:
         self.type: str = type
         self.inputSchema: dict[str, Any] = inputSchema
 
+
 class ListToolsResult:
     """Result wrapper for a list of LocalTool objects."""
+
     def __init__(self, tools: list[LocalTool]) -> None:
         """Initialize with a list of LocalTool objects."""
         self.tools: list[LocalTool] = tools
-
-
 
 
 # Pydantic models for config
@@ -47,13 +57,16 @@ class Message(BaseModel):
     tool_calls: Optional[Any] = None
     tool_call_id: Optional[str] = None
 
+
 class AgentConfig(BaseModel):
     description: str = ""
     servers: dict[str, MCPServerConfig]
     history: Optional[list[Message]] = Field(default_factory=list)
 
+
 class MCPClient:
     """Client for managing remote MCP tool servers via stdio transport."""
+
     def __init__(self, name: str, config: MCPServerConfig):
         """Initialize MCPClient with name and configuration."""
         self.name: str = name
@@ -68,10 +81,16 @@ class MCPClient:
         """Establish connection to the MCP server using stdio transport."""
         command: str = self.config.command
         args: list[str] = self.config.args or []
-        params: StdioServerParameters = StdioServerParameters(command=command, args=args, env=None)
-        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(params))
+        params: StdioServerParameters = StdioServerParameters(
+            command=command, args=args, env=None
+        )
+        stdio_transport = await self.exit_stack.enter_async_context(
+            stdio_client(params)
+        )
         self.stdio, self.write = stdio_transport
-        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
+        self.session = await self.exit_stack.enter_async_context(
+            ClientSession(self.stdio, self.write)
+        )
         await self.session.initialize()
         self.initialized = True
 
@@ -86,10 +105,11 @@ class MCPClient:
         if not self.initialized:
             await self.connect()
         return await self.session.call_tool(tool_name, params)
-    
+
 
 class MCPLocalClient:
     """Client for managing and invoking local tools."""
+
     def __init__(self, name: str, tools: list[LocalTool]) -> None:
         """Initialize MCPLocalClient with name and a list of LocalTool objects."""
         self.name: str = name
@@ -107,6 +127,7 @@ class MCPLocalClient:
     async def call_tool(self, tool_name: str, params: dict[str, Any]) -> Any:
         """Call a local tool by name with given parameters."""
         import inspect
+
         tool = self.my_tools.get(tool_name)
         if not tool:
             raise ValueError(f"Tool {tool_name} not found")

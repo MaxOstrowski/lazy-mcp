@@ -1,14 +1,14 @@
-
 """
 API endpoints for Lazy MCP backend using FastAPI.
 Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from llm_client import LLMClient
+
 from typing import Any
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from llm_client import LLMClient
+from pydantic import BaseModel
 
 app = FastAPI()
 app.add_middleware(
@@ -21,6 +21,7 @@ app.add_middleware(
 
 
 llm = LLMClient()
+
 
 @app.on_event("startup")
 async def startup_event() -> None:
@@ -37,20 +38,27 @@ async def shutdown_event() -> None:
 
 class ChatRequest(BaseModel):
     """Request model for chat endpoint."""
+
     message: str
+
 
 class ChatResponse(BaseModel):
     """Response model for chat endpoint."""
+
     reply: list[str]
+
 
 class LogEntry(BaseModel):
     """Model for a single log entry."""
+
     level: str
     message: str
     time: str
 
+
 class LogsResponse(BaseModel):
     """Response model for logs endpoint."""
+
     logs: list[LogEntry]
 
 
@@ -60,12 +68,22 @@ async def chat(request: ChatRequest) -> ChatResponse:
     reply: list[str] = await llm.ask_llm_with_tools(request.message)
     return ChatResponse(reply=reply)
 
+
 @app.get("/logs", response_model=LogsResponse)
 async def get_logs() -> LogsResponse:
     """Logs endpoint: retrieve and format logs from the LLM client."""
     try:
         log_entries: list[Any] = llm.get_and_clear_logs()
-        logs: list[LogEntry] = [LogEntry(**entry) if isinstance(entry, dict) else entry for entry in log_entries]
+        logs: list[LogEntry] = [
+            LogEntry(**entry) if isinstance(entry, dict) else entry
+            for entry in log_entries
+        ]
         return LogsResponse(logs=logs)
     except Exception as e:
-        return LogsResponse(logs=[LogEntry(level="ERROR", message=f"Error fetching logs: {str(e)}", time="")])
+        return LogsResponse(
+            logs=[
+                LogEntry(
+                    level="ERROR", message=f"Error fetching logs: {str(e)}", time=""
+                )
+            ]
+        )
