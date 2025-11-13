@@ -4,7 +4,6 @@ import SplitPane from 'react-split-pane';
 
 function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showAgentInput, setShowAgentInput] = useState(false);
   const [newAgent, setNewAgent] = useState("");
   const menuRef = useRef(null);
 
@@ -27,17 +26,16 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
   const handleSelectAgent = async (name) => {
     setAgent(name);
     setMenuOpen(false);
-    setShowAgentInput(false);
     await refreshAgents();
   };
 
-  const handleCreateAgent = async () => {
-    if (!newAgent.trim()) return;
-    setAgent(newAgent.trim());
-    setMenuOpen(false);
-    setShowAgentInput(false);
-    setNewAgent("");
-    await refreshAgents();
+  const handleNewAgentKeyDown = async (e) => {
+    if (e.key === 'Enter' && newAgent.trim()) {
+      setAgent(newAgent.trim());
+      setMenuOpen(false);
+      setNewAgent("");
+      await refreshAgents();
+    }
   };
 
   return (
@@ -59,21 +57,14 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                     <option key={a} value={a}>{a}</option>
                   ))}
                 </select>
-                <button style={{ marginTop: 6, width: '100%' }} onClick={() => setShowAgentInput(v => !v)}>
-                  {showAgentInput ? 'Cancel' : 'New Agent...'}
-                </button>
-                {showAgentInput && (
-                  <div style={{ marginTop: 6 }}>
-                    <input
-                      type="text"
-                      value={newAgent}
-                      onChange={e => setNewAgent(e.target.value)}
-                      placeholder="Agent name"
-                      style={{ width: '100%' }}
-                    />
-                    <button style={{ width: '100%', marginTop: 4 }} onClick={handleCreateAgent}>Create & Open</button>
-                  </div>
-                )}
+                <input
+                  type="text"
+                  value={newAgent}
+                  onChange={e => setNewAgent(e.target.value)}
+                  onKeyDown={handleNewAgentKeyDown}
+                  placeholder="New agent name (Enter to switch)"
+                  style={{ width: '100%', marginTop: 8 }}
+                />
               </div>
             </div>
           )}
@@ -133,10 +124,13 @@ function App() {
     try {
       const response = await fetch('/agents');
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
+      let data = await response.json();
+      if (Array.isArray(data)) {
+        // If current agent is not in the list, add it manually
+        if (agent && !data.includes(agent)) {
+          data = [agent, ...data];
+        }
         setAgents(data);
-        if (!data.includes(agent)) setAgent(data[0]);
       }
     } catch (err) {
       setAgents(['default']);
