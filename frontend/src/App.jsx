@@ -59,8 +59,8 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
 
   return (
     <div className="chat-window">
-      <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.2em', padding: '8px 0', background: '#f7f7f7', borderBottom: '1px solid #eee' }}>
-        Agent: <span style={{ color: '#2a7ae2' }}>{agent}</span>
+      <div className="agent-header">
+        Agent: <span className="agent-name">{agent}</span>
       </div>
       <div className="chat-header">
         <div className="menu-container" ref={menuRef}>
@@ -68,27 +68,27 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
           {menuOpen && (
             <div className="menu-dropdown">
               <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>
-              <div style={{ borderTop: '1px solid #eee', margin: '8px 0' }} />
-              <div style={{ padding: '0 8px 8px 8px' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Open Agent</div>
-                <select value={agent} onChange={e => handleSelectAgent(e.target.value)} style={{ width: '100%', marginBottom: 8 }}>
+              <div className="menu-divider" />
+              <div className="menu-section">
+                <div className="menu-section-title">Open Agent</div>
+                <select className="menu-select" value={agent} onChange={e => handleSelectAgent(e.target.value)}>
                   {agents.map(a => (
                     <option key={a} value={a}>{a}</option>
                   ))}
                 </select>
                 <input
+                  className="menu-input"
                   type="text"
                   value={newAgent}
                   onChange={e => setNewAgent(e.target.value)}
                   onKeyDown={handleNewAgentKeyDown}
                   placeholder="New agent name (Enter to switch)"
-                  style={{ width: '100%' }}
                 />
               </div>
-              <div style={{ borderTop: '1px solid #eee', margin: '8px 0' }} />
-              <div style={{ padding: '0 8px 8px 8px' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>Delete Agent</div>
-                <select value={deleteAgent} onChange={handleDeleteAgentSelect} style={{ width: '100%' }}>
+              <div className="menu-divider" />
+              <div className="menu-section">
+                <div className="menu-section-title">Delete Agent</div>
+                <select className="menu-select" value={deleteAgent} onChange={handleDeleteAgentSelect}>
                   <option value="">Select agent</option>
                   {agents.filter(a => a !== "default").map(a => (
                     <option key={a} value={a}>{a}</option>
