@@ -365,19 +365,13 @@ function App() {
   }, []);
 
   // Tool call confirmation modal
-  const handleToolCallConfirm = (confirmed) => {
+  const handleToolCallConfirm = (confirmationState) => {
     if (ws.current && toolCallPending) {
-      ws.current.send(JSON.stringify({ tool_call_confirmed: confirmed }));
+      ws.current.send(JSON.stringify({ tool_call_confirmed: confirmationState }));
       setToolCallPending(null);
       if (toolCallResolve) {
         toolCallResolve();
         setToolCallResolve(null);
-      }
-      if (!confirmed) {
-        setMessages(msgs => [
-          ...msgs,
-          { role: 'tool', content: `Tool call '${toolCallPending.name}' rejected by user.` }
-        ]);
       }
     }
   };
@@ -437,8 +431,13 @@ function App() {
             <p><b>Name:</b> {toolCallPending.name}</p>
             <p><b>Description:</b> {toolCallPending.description}</p>
             <div><b>Arguments:</b> <pre>{toolCallPending.args}</pre></div>
-            <button onClick={() => handleToolCallConfirm(true)}>Allow</button>
-            <button onClick={() => handleToolCallConfirm(false)}>Reject</button>
+            <div style={{ margin: '1em 0' }}>
+              <label><b>Confirmation Option:</b></label>
+            </div>
+            <button onClick={() => handleToolCallConfirm('always_ask')}>Confirm</button>
+            <button onClick={() => handleToolCallConfirm('always_confirmed')}>Always confirm</button>
+            <button onClick={() => handleToolCallConfirm('always_rejected')}>Always Reject</button>
+            <button onClick={() => handleToolCallConfirm('reject')}>Reject</button>
           </div>
         </div>
       )}

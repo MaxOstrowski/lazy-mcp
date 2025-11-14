@@ -13,7 +13,8 @@ from config_utils import get_config_path
 from dotenv import load_dotenv
 from mcp_client import LocalTool, MCPClient, MCPLocalClient
 from memory_log_handler import MemoryLogHandler
-from models import AgentConfig, Message, ToolCallConfirmation, ToolCallPending
+from models import (AgentConfig, ConfirmationState, ConfirmationStateResponse,
+                    Message, ToolCallConfirmation, ToolCallPending)
 from openai import AzureOpenAI, BadRequestError
 
 logging.basicConfig(level=logging.WARNING)
@@ -252,8 +253,21 @@ class LLMClient:
                                     tool_desc = tool["function"].get("description", "")
                                     mcp_client = self.mcp_clients[client_name]
                                     # Request confirmation from frontend
-                                    confirmed = True
-                                    if websocket is not None:
+                                    if client_name in LOCAL_MCP_NAMES:
+                                        confirmation_state = (
+                                            ConfirmationStateResponse.ALWAYS_CONFIRMED
+                                        )
+                                    else:
+                                        confirmation_state = (
+                                            self.agent_config.servers[client_name]
+                                            .functions[tool_name]
+                                            .confirmed
+                                        )
+                                    if (
+                                        websocket is not None
+                                        and confirmation_state
+                                        == ConfirmationState.ALWAYS_ASK
+                                    ):
                                         payload = ToolCallPending(
                                             name=tool_name,
                                             args=tool_args,
@@ -262,15 +276,38 @@ class LLMClient:
                                         await websocket.send_json(
                                             {"tool_call_pending": payload}
                                         )
-                                        # Wait for confirmation
-                                        resp = await websocket.receive_json()
-                                        # Validate confirmation using model
-                                        try:
-                                            confirmation = ToolCallConfirmation(**resp)
-                                            confirmed = confirmation.tool_call_confirmed
-                                        except Exception:
-                                            confirmed = False
-                                    if confirmed:
+                                        # Wait for confirmation and update state
+                                        confirmation_state = ToolCallConfirmation(
+                                            **await websocket.receive_json()
+                                        ).tool_call_confirmed
+                                        if (
+                                            confirmation_state
+                                            == ConfirmationStateResponse.REJECT
+                                        ):
+                                            confirmation_state_update = (
+                                                ConfirmationState.ALWAYS_ASK
+                                            )
+                                        else:
+                                            confirmation_state_update = (
+                                                confirmation_state
+                                            )
+                                        if (
+                                            confirmation_state_update
+                                            != self.agent_config.servers[client_name]
+                                            .functions[tool_name]
+                                            .confirmed
+                                        ):
+                                            self.agent_config.servers[
+                                                client_name
+                                            ].functions[
+                                                tool_name
+                                            ].confirmed = confirmation_state_update
+                                            self.save_agent_configuration()
+
+                                    if confirmation_state not in (
+                                        ConfirmationState.ALWAYS_REJECTED,
+                                        ConfirmationStateResponse.REJECT,
+                                    ):
                                         self.logger.info(
                                             f"Calling tool '{tool_name}' with args: {tool_args}"
                                         )
