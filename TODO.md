@@ -4,4 +4,3 @@
  - token counter 
  - agent descriptions
  - run summarizer every 50 chat messages
- - split App.jsx
