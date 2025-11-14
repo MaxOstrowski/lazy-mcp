@@ -404,8 +404,7 @@ function App() {
         split="vertical"
         minSize={300}
         defaultSize="100%"
-        style={{ height: '100vh' }}
-        pane2Style={{ transition: 'width 0.2s', height: '100%' }}
+        className="split-pane-full"
       >
         <ChatWindow
           messages={messages}
@@ -431,7 +430,7 @@ function App() {
             <p><b>Name:</b> {toolCallPending.name}</p>
             <p><b>Description:</b> {toolCallPending.description}</p>
             <div><b>Arguments:</b> <pre>{toolCallPending.args}</pre></div>
-            <div style={{ margin: '1em 0' }}>
+            <div className="modal-confirm-label">
               <label><b>Confirmation Option:</b></label>
             </div>
             <button onClick={() => handleToolCallConfirm('always_ask')}>Confirm</button>

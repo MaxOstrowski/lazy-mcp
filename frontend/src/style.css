@@ -1,3 +1,12 @@
+/* SplitPane full height and transition styles */
+.split-pane-full {
+  height: 100vh !important;
+}
+
+/* Modal confirm label spacing */
+.modal-confirm-label {
+  margin: 1em 0;
+}
 
 /* Modal overlay and modal for tool call confirmation */
 .modal-overlay {

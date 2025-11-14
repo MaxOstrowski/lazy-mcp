@@ -13,8 +13,14 @@ from config_utils import get_config_path
 from dotenv import load_dotenv
 from mcp_client import LocalTool, MCPClient, MCPLocalClient
 from memory_log_handler import MemoryLogHandler
-from models import (AgentConfig, ConfirmationState, ConfirmationStateResponse,
-                    Message, ToolCallConfirmation, ToolCallPending)
+from models import (
+    AgentConfig,
+    ConfirmationState,
+    ConfirmationStateResponse,
+    Message,
+    ToolCallConfirmation,
+    ToolCallPending,
+)
 from openai import AzureOpenAI, BadRequestError
 
 logging.basicConfig(level=logging.WARNING)
