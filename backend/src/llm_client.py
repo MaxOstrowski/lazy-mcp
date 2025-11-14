@@ -122,6 +122,22 @@ class LLMClient:
                     },
                     function=bind_function(self.unload_mcp),
                 ),
+                LocalTool(
+                    name="change_agent_description",
+                    type="function",
+                    description="Change your own system description",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "new_description": {
+                                "type": "string",
+                                "description": "New system description for the agent",
+                            }
+                        },
+                        "required": ["new_description"],
+                    },
+                    function=bind_function(self._change_agent_description),
+                ),
             ],
         )
 
@@ -134,6 +150,14 @@ class LLMClient:
         formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
         self.memory_handler.setFormatter(formatter)
         self.logger.addHandler(self.memory_handler)
+
+    def _change_agent_description(self, new_description: str) -> str:
+        """Change the agent's system description."""
+        self.agent_config.description = new_description
+        assert len(self.agent_config.history) > 0
+        self.agent_config.history[0] = Message(role="system", content=new_description)
+        self.save_agent_configuration()
+        return "Agent description updated."
 
     def save_agent_configuration(self):
         """Save the current agent configuration to the configuration file."""

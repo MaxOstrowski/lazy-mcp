@@ -112,7 +112,7 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
   return (
     <div className="chat-window">
       <div className="agent-header">
-        <span className="agent-label">Agent:</span> <span className="agent-name">{agent}</span>
+        <span className="agent-label">Agent:</span> <span className="agent-name" title={servers[agent]?.description || servers[agent]?.desc || "No description"}>{agent}</span>
       </div>
       <div className="chat-header">
         <div className="menu-container" ref={menuRef}>
