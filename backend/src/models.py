@@ -50,8 +50,6 @@ class DeleteAgentResponse(BaseModel):
 
 
 # Servers models
-class ServersResponse(BaseModel):
-    servers: Dict[str, Any]  # Use Any for MCPServerConfig, avoids circular import
 
 
 class UpdateFlagRequest(BaseModel):

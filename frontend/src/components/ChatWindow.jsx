@@ -4,33 +4,37 @@ import { useState, useEffect, useRef } from 'react';
 function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents, deleteAgent, setDeleteAgent, handleDeleteAgent, lastTokensUsed, accumTokens }) {
   // Toggle allowed flag for a function
   const handleFunctionAllowedChange = async (serverName, functionName, allowed) => {
-    const updated = { ...servers };
-    if (updated[serverName] && updated[serverName].functions && updated[serverName].functions[functionName]) {
-      updated[serverName].functions[functionName].allowed = allowed;
-      setServers(updated);
-      // PATCH to backend to persist change
-      await fetch(`/servers/update_flag?agent=${encodeURIComponent(agent)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          server_name: serverName,
-          function_name: functionName,
-          flag_name: 'allowed',
-          value: allowed
-        }),
-      });
-    }
+    setAgentConfig(prev => {
+      const updated = { ...prev };
+      updated.servers = { ...updated.servers };
+      if (updated.servers[serverName] && updated.servers[serverName].functions && updated.servers[serverName].functions[functionName]) {
+        updated.servers[serverName].functions = { ...updated.servers[serverName].functions };
+        updated.servers[serverName].functions[functionName] = { ...updated.servers[serverName].functions[functionName], allowed };
+      }
+      return updated;
+    });
+    // PATCH to backend to persist change
+    await fetch(`/agent_config/update_flag?agent=${encodeURIComponent(agent)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        server_name: serverName,
+        function_name: functionName,
+        flag_name: 'allowed',
+        value: allowed
+      }),
+    });
   };
   const [menuOpen, setMenuOpen] = useState(false);
-  const [servers, setServers] = useState({});
+  const [agentConfig, setAgentConfig] = useState({ description: '', servers: {} });
   const [expandedServers, setExpandedServers] = useState({});
 
   // Fetch servers when menu opens or agent changes
   useEffect(() => {
     if (menuOpen) {
-      fetch(`/servers?agent=${encodeURIComponent(agent)}`)
+      fetch(`/agent_config?agent=${encodeURIComponent(agent)}`)
         .then(res => res.json())
-        .then(data => setServers(data.servers || {}));
+        .then(data => setAgentConfig(data));
     }
   }, [menuOpen, agent]);
 
@@ -41,22 +45,25 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
 
   // Toggle allowed flag for a server
   const handleServerAllowedChange = async (serverName, allowed) => {
-    const updated = { ...servers };
-    if (updated[serverName]) {
-      updated[serverName].allowed = allowed;
-      setServers(updated);
-      // PATCH to backend to persist change
-      await fetch(`/servers/update_flag?agent=${encodeURIComponent(agent)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          server_name: serverName,
-          function_name: '',
-          flag_name: 'allowed',
-          value: allowed
-        }),
-      });
-    }
+    setAgentConfig(prev => {
+      const updated = { ...prev };
+      updated.servers = { ...updated.servers };
+      if (updated.servers[serverName]) {
+        updated.servers[serverName] = { ...updated.servers[serverName], allowed };
+      }
+      return updated;
+    });
+    // PATCH to backend to persist change
+    await fetch(`/agent_config/update_flag?agent=${encodeURIComponent(agent)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        server_name: serverName,
+        function_name: '',
+        flag_name: 'allowed',
+        value: allowed
+      }),
+    });
   };
   const [newAgent, setNewAgent] = useState("");
   const menuRef = useRef(null);
@@ -82,7 +89,6 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
-        setShowAgentInput(false);
       }
     }
     if (menuOpen) {
@@ -112,7 +118,8 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
   return (
     <div className="chat-window">
       <div className="agent-header">
-        <span className="agent-label">Agent:</span> <span className="agent-name" title={servers[agent]?.description || servers[agent]?.desc || "No description"}>{agent}</span>
+        <span className="agent-label">Agent:</span>
+        <span className="agent-name" title={agentConfig.description || "No description"}>{agent}</span>
       </div>
       <div className="chat-header">
         <div className="menu-container" ref={menuRef}>
@@ -124,6 +131,7 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                   <li>
                     <div className="menu-section-title">Open Agent</div>
                     <select className="menu-select" value={agent} onChange={e => handleSelectAgent(e.target.value)}>
+                      <option value="" disabled>Select agent</option>
                       {agents.map(a => (
                         <option key={a} value={a}>{a}</option>
                       ))}
@@ -149,7 +157,7 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                   <li>
                     <div className="menu-section-title">Servers</div>
                     <div className="servers-list">
-                      {Object.entries(servers).map(([serverName, server]) => (
+                      {Object.entries(agentConfig.servers || {}).map(([serverName, server]) => (
                         <div key={serverName} className="server-item">
                           <div className="server-label-row">
                             <input
@@ -188,8 +196,7 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                                       const nextPhase =
                                         f.confirmed === 'always_confirmed' ? 'always_ask' :
                                         f.confirmed === 'always_ask' ? 'always_rejected' : 'always_confirmed';
-                                      // PATCH to backend to persist change
-                                      await fetch(`/servers/update_flag?agent=${encodeURIComponent(agent)}`, {
+                                      await fetch(`/agent_config/update_flag?agent=${encodeURIComponent(agent)}`, {
                                         method: 'PATCH',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({
@@ -200,10 +207,12 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                                         }),
                                       });
                                       // Update local state
-                                      setServers(prev => {
+                                      setAgentConfig(prev => {
                                         const updated = { ...prev };
-                                        if (updated[serverName] && updated[serverName].functions && updated[serverName].functions[fname]) {
-                                          updated[serverName].functions[fname].confirmed = nextPhase;
+                                        updated.servers = { ...updated.servers };
+                                        if (updated.servers[serverName] && updated.servers[serverName].functions && updated.servers[serverName].functions[fname]) {
+                                          updated.servers[serverName].functions = { ...updated.servers[serverName].functions };
+                                          updated.servers[serverName].functions[fname] = { ...updated.servers[serverName].functions[fname], confirmed: nextPhase };
                                         }
                                         return updated;
                                       });

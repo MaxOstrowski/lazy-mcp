@@ -16,9 +16,9 @@ from models import (
     HistoryResponse,
     LogEntry,
     LogsResponse,
-    ServersResponse,
     UpdateFlagRequest,
     UpdateFlagResponse,
+    AgentConfig,
 )
 
 app = FastAPI()
@@ -115,21 +115,18 @@ async def delete_agent(agent: str = Query(..., description="Agent name/ID")) -> 
         raise HTTPException(status_code=500, detail=f"Failed to delete agent: {e}")
 
 
-# Endpoint to return the complete servers dict from the AgentConfig
-
-
-@app.get("/servers", response_model=ServersResponse)
-async def get_servers(agent: str = Query(..., description="Agent name/ID")) -> ServersResponse:
-    """Get the complete servers dict from the agent's configuration."""
+@app.get("/agent_config", response_model=AgentConfig)
+async def get_agent_config(agent: str = Query(..., description="Agent name/ID")) -> AgentConfig:
+    """Get the complete agent configuration."""
     llm = await get_agent(agent)
-    return ServersResponse(servers=llm.agent_config.servers)
+    return llm.agent_config
 
 
 # Request model for updating a server or function flag
 
 
 # Endpoint to update a flag for a server or function
-@app.patch("/servers/update_flag", response_model=UpdateFlagResponse)
+@app.patch("/agent_config/update_flag", response_model=UpdateFlagResponse)
 async def update_flag(
     agent: str = Query(..., description="Agent name/ID"),
     request: UpdateFlagRequest = Body(...),

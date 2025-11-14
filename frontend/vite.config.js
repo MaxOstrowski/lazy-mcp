@@ -11,8 +11,8 @@ export default defineConfig({
       '/history': 'http://localhost:8000',
       '/agents': 'http://localhost:8000',
       '/agent': 'http://localhost:8000',
-      '/servers': 'http://localhost:8000',
-      '/servers/update_flag': 'http://localhost:8000',
+      '/agent_config': 'http://localhost:8000',
+      '/agent_config/update_flag': 'http://localhost:8000',
     },
   },
 });
