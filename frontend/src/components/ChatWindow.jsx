@@ -112,87 +112,85 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
   return (
     <div className="chat-window">
       <div className="agent-header">
-        Agent: <span className="agent-name">{agent}</span>
+        <span className="agent-label">Agent:</span> <span className="agent-name">{agent}</span>
       </div>
       <div className="chat-header">
         <div className="menu-container" ref={menuRef}>
           <button className="menu-btn" onClick={async () => { await refreshAgents(); setMenuOpen(m => !m); }} title="Menu">&#8942;</button>
           {menuOpen && (
               <div className="menu-dropdown">
-                <button onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</button>
-                <div className="menu-divider" />
-                <div className="menu-section">
-                  <div className="menu-section-title">Open Agent</div>
-                  <select className="menu-select" value={agent} onChange={e => handleSelectAgent(e.target.value)}>
-                    {agents.map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
-                  <span className="menu-agent-gap" />
-                  <input
-                    className="menu-input menu-input-wide"
-                    type="text"
-                    value={newAgent}
-                    onChange={e => setNewAgent(e.target.value)}
-                    onKeyDown={handleNewAgentKeyDown}
-                    placeholder="New agent name (Enter to switch)"
-                  />
-                </div>
-                <div className="menu-divider" />
-                <div className="menu-section">
-                  <div className="menu-section-title">Delete Agent</div>
-                  <select className="menu-select" value={deleteAgent} onChange={handleDeleteAgentSelect}>
-                    <option value="">Select agent</option>
-                    {agents.filter(a => a !== "default").map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="menu-divider" />
-                <div className="menu-section">
-                  <div className="menu-section-title">Servers</div>
-                  <div className="servers-list">
-                    {Object.entries(servers).map(([serverName, server]) => (
-                      <div key={serverName} className="server-item">
-                        <div className="server-label-row">
-                          <input
-                            type="checkbox"
-                            checked={server.allowed !== false}
-                            onChange={e => handleServerAllowedChange(serverName, e.target.checked)}
-                            onClick={e => e.stopPropagation()}
-                          />
-                          <span
-                            className="server-name clickable-server"
-                            onClick={() => toggleExpandServer(serverName)}
-                          >
-                            {serverName}
-                          </span>
-                          <span
-                            className="server-expand-toggle"
-                            onClick={e => { e.stopPropagation(); toggleExpandServer(serverName); }}
-                          >
-                            {expandedServers[serverName] ? '▼' : '▶'}
-                          </span>
+                <ul className="menu-list">
+                  <li onClick={() => { setMenuOpen(false); onClearHistory(); }}>Clear History</li>
+                  <li>
+                    <div className="menu-section-title">Open Agent</div>
+                    <select className="menu-select" value={agent} onChange={e => handleSelectAgent(e.target.value)}>
+                      {agents.map(a => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                    <input
+                      className="menu-select"
+                      type="text"
+                      value={newAgent}
+                      onChange={e => setNewAgent(e.target.value)}
+                      onKeyDown={handleNewAgentKeyDown}
+                      placeholder="New agent name (Hit Enter)"
+                    />
+                  </li>
+                  <li>
+                    <div className="menu-section-title">Delete Agent</div>
+                    <select className="menu-select" value={deleteAgent} onChange={handleDeleteAgentSelect}>
+                      <option value="">Select agent</option>
+                      {agents.filter(a => a !== "default").map(a => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                  </li>
+                  <li>
+                    <div className="menu-section-title">Servers</div>
+                    <div className="servers-list">
+                      {Object.entries(servers).map(([serverName, server]) => (
+                        <div key={serverName} className="server-item">
+                          <div className="server-label-row">
+                            <input
+                              type="checkbox"
+                              checked={server.allowed !== false}
+                              onChange={e => handleServerAllowedChange(serverName, e.target.checked)}
+                              onClick={e => e.stopPropagation()}
+                            />
+                            <span
+                              className="server-name clickable-server"
+                              onClick={() => toggleExpandServer(serverName)}
+                            >
+                              {serverName}
+                            </span>
+                            <span
+                              className="server-expand-toggle"
+                              onClick={e => { e.stopPropagation(); toggleExpandServer(serverName); }}
+                            >
+                              {expandedServers[serverName] ? '▼' : '▶'}
+                            </span>
+                          </div>
+                          {expandedServers[serverName] && server.functions && (
+                            <ul className="server-functions">
+                              {Object.entries(server.functions).map(([fname, f]) => (
+                                <li key={fname} className="function-item">
+                                  <input
+                                    type="checkbox"
+                                    checked={f.allowed !== false}
+                                    onChange={e => handleFunctionAllowedChange(serverName, fname, e.target.checked)}
+                                    className="function-checkbox"
+                                  />
+                                  <span className="function-name" title={f.description || ''}>{fname}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
-                        {expandedServers[serverName] && server.functions && (
-                          <ul className="server-functions">
-                            {Object.entries(server.functions).map(([fname, f]) => (
-                              <li key={fname} className="function-item">
-                                <input
-                                  type="checkbox"
-                                  checked={f.allowed !== false}
-                                  onChange={e => handleFunctionAllowedChange(serverName, fname, e.target.checked)}
-                                  className="function-checkbox"
-                                />
-                                <span className="function-name" title={f.description || ''}>{fname}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
+                  </li>
+                </ul>
               </div>
           )}
         </div>

@@ -1,3 +1,64 @@
+/* Bold style for chat window agent label */
+.agent-header .agent-label {
+  font-weight: bold;
+}
+/* Standard servers list styling in menu dropdown */
+.servers-list {
+  margin: 8px 0;
+  padding: 0 8px;
+}
+.server-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+}
+.server-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+.server-name {
+  font-weight: 500;
+  font-size: 1em;
+  cursor: pointer;
+}
+.server-expand-toggle {
+  margin-left: auto;
+  cursor: pointer;
+  font-size: 1em;
+}
+.server-functions {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 0 16px;
+}
+.function-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.function-checkbox {
+  margin: 0;
+}
+.function-name {
+  font-size: 0.95em;
+}
+/* Standard input styling for menu dropdown */
+.menu-dropdown input[type="text"] {
+  width: calc(100% - 32px);
+  margin: 8px 16px;
+  padding: 8px 12px;
+  font-size: 1em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-family: inherit;
+  box-sizing: border-box;
+  display: block;
+}
 /* Center and narrow chat window */
 .chat-window {
   width: 50vw;
@@ -147,8 +208,35 @@
   max-height: 60vh;
   overflow-y: auto;
   overflow-x: auto;
-  padding-left: 8px;
-  padding-right: 8px;
+  padding: 8px 0;
+}
+/* Standard menu list styling */
+.menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.menu-list li {
+  padding: 10px 24px;
+  font-size: 1em;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.menu-list li:hover {
+  background: #f0f0f0;
+}
+/* Standard select box styling */
+.menu-dropdown select {
+  width: calc(100% - 32px);
+  margin: 8px 16px;
+  padding: 8px 12px;
+  font-size: 1em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  font-family: inherit;
 }
 .menu-dropdown button {
   background: none;
