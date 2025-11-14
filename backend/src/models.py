@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: List[str]
+    tokens_used: int = 0
 
 
 # Log models

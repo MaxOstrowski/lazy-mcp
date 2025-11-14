@@ -15,6 +15,7 @@ from mcp_client import LocalTool, MCPClient, MCPLocalClient
 from memory_log_handler import MemoryLogHandler
 from models import (
     AgentConfig,
+    ChatResponse,
     ConfirmationState,
     ConfirmationStateResponse,
     Message,
@@ -199,12 +200,13 @@ class LLMClient:
                         tools_list.append(tool)
         return tools_list
 
-    async def ask_llm_with_tools(self, prompt: Optional[str] = None, websocket=None) -> list[str]:
+    async def ask_llm_with_tools(self, prompt: Optional[str] = None, websocket=None) -> ChatResponse:
         """Send a prompt to the LLM, handle tool calls, and return responses. If websocket is provided, request frontend confirmation before tool call."""
         self.agent_config.history.append(Message(role="user", content=prompt))
         tools_list = self._collect_allowed_tools()
 
         self.logger.warning(f"Using tools: {[tool['function']['name'] for tool in tools_list]}")
+        tokens_used = 0
         try:
             ret: list[str] = []
             while True:
@@ -219,6 +221,7 @@ class LLMClient:
                 self.agent_config.history.append(Message(**message.model_dump()))
                 if message.content:
                     ret.append(message.content)
+                tokens_used += response.usage.total_tokens
 
                 if hasattr(message, "tool_calls") and message.tool_calls:
                     await self._handle_tool_calls(message.tool_calls, websocket)
@@ -227,7 +230,7 @@ class LLMClient:
         except BadRequestError as e:
             self.logger.error(f"OpenAI content filter triggered: {e}")
 
-        return ret
+        return ChatResponse(reply=ret, tokens_used=tokens_used)
 
     async def _handle_tool_calls(self, tool_calls, websocket=None):
         """Handle tool calls from LLM response."""

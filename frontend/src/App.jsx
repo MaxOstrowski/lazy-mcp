@@ -8,6 +8,7 @@ import { useChatHistory } from './hooks/useChatHistory';
 import { useLogs } from './hooks/useLogs';
 import { useToolCallWebSocket } from './hooks/useToolCallWebSocket';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useChatWebSocketEffect } from './hooks/useChatWebSocketEffect';
 
 function App() {
   // Use custom hooks for state and logic
@@ -16,6 +17,8 @@ function App() {
   const { logs, setLogs, fetchLogs } = useLogs(agent);
   const [input, setInput] = useState('');
   const [deleteAgent, setDeleteAgent] = useState("");
+  const [lastTokensUsed, setLastTokensUsed] = useState(0);
+  const [accumTokens, setAccumTokens] = useState(0);
   const messagesEndRef = useRef(null);
   const [toolCallPending, setToolCallPending] = useState(null);
   const [toolCallResolve, setToolCallResolve] = useState(null);
@@ -59,6 +62,22 @@ function App() {
     setInput('');
   };
 
+  // Listen for chat response and update token counters
+  useChatWebSocketEffect(
+    ws,
+    agent,
+    setMessages,
+    setLastTokensUsed,
+    setAccumTokens,
+    setToolCallPending,
+    setToolCallResolve
+  );
+
+  // Reset accumulated tokens when agent changes
+  useEffect(() => {
+    setAccumTokens(0);
+  }, [agent]);
+
   const handleClearHistory = async () => {
     try {
       const response = await fetch(`/clear_history?agent=${encodeURIComponent(agent)}`, { method: 'POST' });
@@ -95,6 +114,8 @@ function App() {
           deleteAgent={deleteAgent}
           setDeleteAgent={setDeleteAgent}
           handleDeleteAgent={handleDeleteAgent}
+          lastTokensUsed={lastTokensUsed}
+          accumTokens={accumTokens}
         />
         <LogWindow logs={logs} />
       </SplitPane>

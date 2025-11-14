@@ -54,9 +54,9 @@ async def chat(websocket: WebSocket):
             agent = data.get("agent", "default")
             message = data.get("message", "")
             llm = await get_agent(agent)
-            reply: list[str] = await llm.ask_llm_with_tools(message, websocket)
+            result = await llm.ask_llm_with_tools(message, websocket)
             llm.save_agent_configuration()
-            await websocket.send_json({"reply": reply})
+            await websocket.send_json(result.dict())
     except WebSocketDisconnect:
         pass
 

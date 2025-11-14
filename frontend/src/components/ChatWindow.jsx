@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
 
-function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents, deleteAgent, setDeleteAgent, handleDeleteAgent }) {
+function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents, deleteAgent, setDeleteAgent, handleDeleteAgent, lastTokensUsed, accumTokens }) {
   // Toggle allowed flag for a function
   const handleFunctionAllowedChange = async (serverName, functionName, allowed) => {
     const updated = { ...servers };
@@ -198,12 +198,14 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
         </div>
       </div>
       <div className="messages">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={msg.role === 'user' ? 'user-msg' : 'api-msg'}>
-            <b>{msg.role}:</b> {msg.content}
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
+        <div className="messages-scroll-area">
+          {messages.map((msg, idx) => (
+            <div key={idx} className={msg.role === 'user' ? 'user-msg' : 'api-msg'}>
+              <b>{msg.role}:</b> {msg.content}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
       <form className="input-form" onSubmit={sendMessage}>
         <input
@@ -213,7 +215,23 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
           placeholder="Type your message..."
           autoFocus
         />
-        <button type="submit">Send</button>
+        <div className="send-btn-container">
+          <button type="submit">Send</button>
+          <div className="token-counter" title="Tokens used: (last request/total)">
+            <span
+              className={
+                lastTokensUsed < 1500
+                  ? 'token-green'
+                  : lastTokensUsed > 10000
+                  ? 'token-red'
+                  : 'token-orange'
+              }
+            >
+              {lastTokensUsed}
+            </span>
+            /{accumTokens}
+          </div>
+        </div>
       </form>
     </div>
   );
