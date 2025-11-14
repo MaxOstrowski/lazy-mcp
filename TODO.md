@@ -1,5 +1,4 @@
  - Optional mcp that helps creating an agent with set_description, discover mcps, etc...
  - preloading flag
- - agent descriptions
  - run summarizer every 50 chat messages
  - can I share pydantic model between frontend and backend?
