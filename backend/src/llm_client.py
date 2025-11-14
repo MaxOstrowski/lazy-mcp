@@ -9,7 +9,7 @@ import logging
 import os
 from collections import defaultdict
 
-from config_utils import get_config_path
+from config_utils import DEFAULT_AGENT_NAME, get_config_path
 from dotenv import load_dotenv
 from mcp_client import LocalTool, MCPClient, MCPLocalClient
 from memory_log_handler import MemoryLogHandler
@@ -35,14 +35,14 @@ LOCAL_MCP_NAMES = ["local"]
 class LLMClient:
     """Main client for LLM and MCP tool management and chat operations."""
 
-    def __init__(self, agent_name: str = "default") -> None:
+    def __init__(self, agent_name: str = DEFAULT_AGENT_NAME) -> None:
         """Initialize the LLMClient, load config, and set up logging and tools."""
         load_dotenv()
         self._set_logger()
         self.api_key = os.getenv("AZURE_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
         self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("OPENAI_API_ENDPOINT")
         self.api_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT") or os.getenv("OPENAI_API_DEPLOYMENT")
-        self.api_version = os.getenv("OPENAI_API_VERSION", "2023-07-01-preview")
+        self.api_version = os.getenv(f"OPENAI_API_VERSION", "2023-07-01-preview")
         self.client = AzureOpenAI(
             api_key=self.api_key,
             api_version=self.api_version,
@@ -54,6 +54,9 @@ class LLMClient:
         config_path = get_config_path(self.agent_name)
         if config_path.exists():
             with config_path.open("r") as f:
+                self.agent_config = AgentConfig(**json.load(f))
+        elif get_config_path(DEFAULT_AGENT_NAME).exists():
+            with get_config_path(DEFAULT_AGENT_NAME).open("r") as f:
                 self.agent_config = AgentConfig(**json.load(f))
         self.tools = defaultdict(list)
         if not self.agent_config.history:
