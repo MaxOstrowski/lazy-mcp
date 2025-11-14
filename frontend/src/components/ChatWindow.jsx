@@ -182,6 +182,33 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
                                     className="function-checkbox"
                                   />
                                   <span className="function-name" title={f.description || ''}>{fname}</span>
+                                  <ThreePhaseIconButton
+                                    phase={f.confirmed || 'always_confirmed'}
+                                    onClick={async () => {
+                                      const nextPhase =
+                                        f.confirmed === 'always_confirmed' ? 'always_ask' :
+                                        f.confirmed === 'always_ask' ? 'always_rejected' : 'always_confirmed';
+                                      // PATCH to backend to persist change
+                                      await fetch(`/servers/update_flag?agent=${encodeURIComponent(agent)}`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          server_name: serverName,
+                                          function_name: fname,
+                                          flag_name: 'confirmed',
+                                          value: nextPhase
+                                        }),
+                                      });
+                                      // Update local state
+                                      setServers(prev => {
+                                        const updated = { ...prev };
+                                        if (updated[serverName] && updated[serverName].functions && updated[serverName].functions[fname]) {
+                                          updated[serverName].functions[fname].confirmed = nextPhase;
+                                        }
+                                        return updated;
+                                      });
+                                    }}
+                                  />
                                 </li>
                               ))}
                             </ul>
@@ -232,6 +259,22 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
         </div>
       </form>
     </div>
+  );
+}
+
+function ThreePhaseIconButton({ phase, onClick }) {
+  const icon = phase === 'always_confirmed' ? '✔' : phase === 'always_ask' ? '?' : '✖';
+  const color = phase === 'always_confirmed' ? 'green' : phase === 'always_ask' ? 'orange' : 'red';
+  const title = phase === 'always_confirmed' ? 'Always Confirmed' : phase === 'always_ask' ? 'Always Ask' : 'Always Reject';
+  return (
+    <span
+      className="three-phase-icon"
+      style={{ color, marginLeft: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2em' }}
+      title={title}
+      onClick={onClick}
+    >
+      {icon}
+    </span>
   );
 }
 

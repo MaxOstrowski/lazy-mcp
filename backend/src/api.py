@@ -9,10 +9,7 @@ from config_utils import get_config_path, list_available_agents
 from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
-from mcp_client import MCPServerConfig
 from models import (
-    ChatRequest,
-    ChatResponse,
     ClearHistoryResponse,
     DeleteAgentResponse,
     HistoryMessage,

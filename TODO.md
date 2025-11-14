@@ -1,6 +1,4 @@
  - Optional mcp that helps creating an agent with set_description, discover mcps, etc...
  - preloading flag
- - find a way to unselect always confirm/reject decisions
- - token counter 
  - agent descriptions
  - run summarizer every 50 chat messages
