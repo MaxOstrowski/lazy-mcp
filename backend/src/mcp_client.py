@@ -55,16 +55,10 @@ class MCPClient:
         """Establish connection to the MCP server using stdio transport."""
         command: str = self.config.command
         args: list[str] = self.config.args or []
-        params: StdioServerParameters = StdioServerParameters(
-            command=command, args=args, env=None
-        )
-        stdio_transport = await self.exit_stack.enter_async_context(
-            stdio_client(params)
-        )
+        params: StdioServerParameters = StdioServerParameters(command=command, args=args, env=None)
+        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(params))
         self.stdio, self.write = stdio_transport
-        self.session = await self.exit_stack.enter_async_context(
-            ClientSession(self.stdio, self.write)
-        )
+        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
         await self.session.initialize()
         self.initialized = True
 

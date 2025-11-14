@@ -62,32 +62,19 @@ async def chat(websocket: WebSocket):
 
 
 @app.get("/logs", response_model=LogsResponse)
-async def get_logs(
-    agent: str = Query(..., description="Agent name/ID")
-) -> LogsResponse:
+async def get_logs(agent: str = Query(..., description="Agent name/ID")) -> LogsResponse:
     """Logs endpoint: retrieve and format logs from the LLM client."""
     llm = await get_agent(agent)
     try:
         log_entries: list[Any] = llm.get_and_clear_logs()
-        logs: list[LogEntry] = [
-            LogEntry(**entry) if isinstance(entry, dict) else entry
-            for entry in log_entries
-        ]
+        logs: list[LogEntry] = [LogEntry(**entry) if isinstance(entry, dict) else entry for entry in log_entries]
         return LogsResponse(logs=logs)
     except Exception as e:
-        return LogsResponse(
-            logs=[
-                LogEntry(
-                    level="ERROR", message=f"Error fetching logs: {str(e)}", time=""
-                )
-            ]
-        )
+        return LogsResponse(logs=[LogEntry(level="ERROR", message=f"Error fetching logs: {str(e)}", time="")])
 
 
 @app.post("/clear_history", response_model=ClearHistoryResponse)
-async def clear_history(
-    agent: str = Query(..., description="Agent name/ID")
-) -> ClearHistoryResponse:
+async def clear_history(agent: str = Query(..., description="Agent name/ID")) -> ClearHistoryResponse:
     """Endpoint to clear the conversation history."""
     llm = await get_agent(agent)
     try:
@@ -99,9 +86,7 @@ async def clear_history(
 
 
 @app.get("/history", response_model=HistoryResponse)
-async def get_history(
-    agent: str = Query(..., description="Agent name/ID")
-) -> HistoryResponse:
+async def get_history(agent: str = Query(..., description="Agent name/ID")) -> HistoryResponse:
     """Endpoint to get the current conversation history."""
     llm = await get_agent(agent)
     messages = []
@@ -119,9 +104,7 @@ async def get_agents():
 
 # Delete agent endpoint
 @app.delete("/agent", response_model=DeleteAgentResponse)
-async def delete_agent(
-    agent: str = Query(..., description="Agent name/ID")
-) -> DeleteAgentResponse:
+async def delete_agent(agent: str = Query(..., description="Agent name/ID")) -> DeleteAgentResponse:
     """Delete the agent config file and remove from memory."""
     config_path = get_config_path(agent)
     try:
@@ -139,9 +122,7 @@ async def delete_agent(
 
 
 @app.get("/servers", response_model=ServersResponse)
-async def get_servers(
-    agent: str = Query(..., description="Agent name/ID")
-) -> ServersResponse:
+async def get_servers(agent: str = Query(..., description="Agent name/ID")) -> ServersResponse:
     """Get the complete servers dict from the agent's configuration."""
     llm = await get_agent(agent)
     return ServersResponse(servers=llm.agent_config.servers)
