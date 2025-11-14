@@ -5,15 +5,12 @@ Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 
 from typing import Any
 
-from fastapi import FastAPI, Query, Body
+from config_utils import get_config_path, list_available_agents
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
 from mcp_client import MCPServerConfig
 from pydantic import BaseModel
-from config_utils import list_available_agents, get_config_path
-
-from fastapi import HTTPException
-
 
 app = FastAPI()
 app.add_middleware(
@@ -27,6 +24,7 @@ app.add_middleware(
 
 # Global dictionary to hold all agent LLMClients
 agents: dict[str, LLMClient] = {}
+
 
 async def get_agent(agent: str) -> LLMClient:
     if agent not in agents:
@@ -48,7 +46,9 @@ class ChatResponse(BaseModel):
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, agent: str = Query(..., description="Agent name/ID")) -> ChatResponse:
+async def chat(
+    request: ChatRequest, agent: str = Query(..., description="Agent name/ID")
+) -> ChatResponse:
     """Chat endpoint: send a message to the LLM and get a reply."""
     llm = await get_agent(agent)
     reply: list[str] = await llm.ask_llm_with_tools(request.message)
@@ -71,7 +71,9 @@ class LogsResponse(BaseModel):
 
 
 @app.get("/logs", response_model=LogsResponse)
-async def get_logs(agent: str = Query(..., description="Agent name/ID")) -> LogsResponse:
+async def get_logs(
+    agent: str = Query(..., description="Agent name/ID")
+) -> LogsResponse:
     """Logs endpoint: retrieve and format logs from the LLM client."""
     llm = await get_agent(agent)
     try:
@@ -89,14 +91,18 @@ async def get_logs(agent: str = Query(..., description="Agent name/ID")) -> Logs
                 )
             ]
         )
-    
+
+
 class ClearHistoryResponse(BaseModel):
     """Response model for clear history endpoint."""
+
     success: bool
 
 
 @app.post("/clear_history", response_model=ClearHistoryResponse)
-async def clear_history(agent: str = Query(..., description="Agent name/ID")) -> ClearHistoryResponse:
+async def clear_history(
+    agent: str = Query(..., description="Agent name/ID")
+) -> ClearHistoryResponse:
     """Endpoint to clear the conversation history."""
     llm = await get_agent(agent)
     try:
@@ -105,17 +111,21 @@ async def clear_history(agent: str = Query(..., description="Agent name/ID")) ->
         return ClearHistoryResponse(success=True)
     except Exception:
         return ClearHistoryResponse(success=False)
-    
+
 
 class HistoryMessage(BaseModel):
     role: str
     content: str
 
+
 class HistoryResponse(BaseModel):
     messages: list[HistoryMessage]
 
+
 @app.get("/history", response_model=HistoryResponse)
-async def get_history(agent: str = Query(..., description="Agent name/ID")) -> HistoryResponse:
+async def get_history(
+    agent: str = Query(..., description="Agent name/ID")
+) -> HistoryResponse:
     """Endpoint to get the current conversation history."""
     llm = await get_agent(agent)
     messages = []
@@ -130,6 +140,7 @@ async def get_history(agent: str = Query(..., description="Agent name/ID")) -> H
 async def get_agents():
     return list_available_agents()
 
+
 class DeleteAgentResponse(BaseModel):
     success: bool
     agents: list[str]
@@ -137,7 +148,9 @@ class DeleteAgentResponse(BaseModel):
 
 # Delete agent endpoint
 @app.delete("/agent", response_model=DeleteAgentResponse)
-async def delete_agent(agent: str = Query(..., description="Agent name/ID")) -> DeleteAgentResponse:
+async def delete_agent(
+    agent: str = Query(..., description="Agent name/ID")
+) -> DeleteAgentResponse:
     """Delete the agent config file and remove from memory."""
     config_path = get_config_path(agent)
     try:
@@ -149,17 +162,21 @@ async def delete_agent(agent: str = Query(..., description="Agent name/ID")) -> 
         return DeleteAgentResponse(success=True, agents=updated_agents)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete agent: {e}")
-    
+
 
 # Endpoint to return the complete servers dict from the AgentConfig
 class ServersResponse(BaseModel):
     servers: dict[str, MCPServerConfig]
 
+
 @app.get("/servers", response_model=ServersResponse)
-async def get_servers(agent: str = Query(..., description="Agent name/ID")) -> ServersResponse:
+async def get_servers(
+    agent: str = Query(..., description="Agent name/ID")
+) -> ServersResponse:
     """Get the complete servers dict from the agent's configuration."""
     llm = await get_agent(agent)
     return ServersResponse(servers=llm.agent_config.servers)
+
 
 # Request model for updating a server or function flag
 class UpdateFlagRequest(BaseModel):
@@ -168,16 +185,18 @@ class UpdateFlagRequest(BaseModel):
     flag_name: str
     value: Any
 
+
 # Response model for update flag
 class UpdateFlagResponse(BaseModel):
     success: bool
     detail: str = ""
 
+
 # Endpoint to update a flag for a server or function
 @app.patch("/servers/update_flag", response_model=UpdateFlagResponse)
 async def update_flag(
     agent: str = Query(..., description="Agent name/ID"),
-    request: UpdateFlagRequest = Body(...)
+    request: UpdateFlagRequest = Body(...),
 ) -> UpdateFlagResponse:
     """Update a flag for a server or function. If function_name is empty, update the server flag; otherwise, update the function flag."""
     llm = await get_agent(agent)
@@ -199,4 +218,3 @@ async def update_flag(
         return UpdateFlagResponse(success=True)
     except Exception as e:
         return UpdateFlagResponse(success=False, detail=str(e))
-

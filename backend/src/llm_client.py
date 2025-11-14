@@ -1,4 +1,3 @@
-
 """
 LLMClient: Handles interaction with Azure/OpenAI and MCP tool clients.
 Provides logging, tool initialization, and chat with tool support.
@@ -6,21 +5,24 @@ Provides logging, tool initialization, and chat with tool support.
 
 import importlib.resources
 import inspect
-from itertools import chain
 import json
 import logging
 import os
 from collections import defaultdict
+from itertools import chain
 
-from dotenv import load_dotenv
-from mcp_client import AgentConfig, LocalTool, MCPClient, MCPLocalClient, Message
-from openai import AzureOpenAI, BadRequestError
 from config_utils import get_config_path
+from dotenv import load_dotenv
+from mcp_client import (AgentConfig, LocalTool, MCPClient, MCPLocalClient,
+                        Message)
+from openai import AzureOpenAI, BadRequestError
 
 logging.basicConfig(level=logging.WARNING)
 
 
 from typing import Any, Optional
+
+LOCAL_MCP_NAMES = ["local"]
 
 
 class MemoryLogHandler(logging.Handler):
@@ -75,7 +77,6 @@ class LLMClient:
             api_version=self.api_version,
             azure_endpoint=self.azure_endpoint,
         )
-        self.local_mcp_clients = {}
         self.mcp_clients = {}
         self.agent_name = agent_name
         self.agent_config = AgentConfig(servers={})
@@ -107,7 +108,7 @@ class LLMClient:
 
             return wrapper
 
-        self.local_mcp_clients["local"] = MCPLocalClient(
+        self.mcp_clients["local"] = MCPLocalClient(
             "local",
             [
                 LocalTool(
@@ -155,7 +156,6 @@ class LLMClient:
     def _set_logger(self) -> None:
         """Set up the local logger and memory handler."""
 
-        # Local logger and memory handler
         self.logger = logging.getLogger(f"LLMClient_{id(self)}")
         self.logger.setLevel(logging.INFO)
         self.memory_handler = MemoryLogHandler()
@@ -164,13 +164,13 @@ class LLMClient:
         self.logger.addHandler(self.memory_handler)
 
     def save_agent_configuration(self):
+        """Save the current agent configuration to the configuration file."""
         try:
             config_path = get_config_path(self.agent_name)
             with config_path.open("w") as f:
                 f.write(self.agent_config.model_dump_json(indent=2))
         except Exception as e:
             self.logger.error(f"Failed to write agent_config: {e}")
-
 
     def list_available_mcps(self) -> list[str]:
         """List all available MCP clients from config."""
@@ -217,43 +217,46 @@ class LLMClient:
             self.logger.debug(
                 f"Initialized tools for MCP client '{client_name}': {self.tools[client_name]}"
             )
-        self.local_tools = defaultdict(list)
-        for client_name, mcp_client in self.local_mcp_clients.items():
-            tools = await mcp_client.list_tools()
-            for tool in tools.tools:
-                self.local_tools[client_name].append(
-                    {
-                        "type": "function",
-                        "function": {
-                            "name": getattr(tool, "name", None),
-                            "description": getattr(tool, "description", None),
-                            "parameters": getattr(tool, "inputSchema"),
-                        },
-                    }
-                )
-            self.logger.debug(
-                f"Initialized local tools for MCP client '{client_name}': {self.local_tools[client_name]}"
-            )
+
+    def _collect_allowed_tools(self) -> list[dict[str, Any]]:
+        """Collect all allowed tools from loaded MCP clients."""
+        tools_list = []
+        for client_name, tools in self.tools.items():
+            if client_name in LOCAL_MCP_NAMES:
+                for tool in tools:
+                    tools_list.append(tool)
+            else:
+                if (
+                    client_name not in self.agent_config.servers
+                    or not self.agent_config.servers[client_name].allowed
+                ):
+                    continue
+                for tool in tools:
+                    assert "function" in tool
+                    assert "name" in tool["function"]
+                    tool_name = tool.get("function", {}).get("name")
+                    assert (
+                        tool_name is not None
+                        or tool_name in self.agent_config.servers[client_name].functions
+                    )
+                    if (
+                        not tool_name
+                        or self.agent_config.servers[client_name]
+                        .functions[tool_name]
+                        .allowed
+                    ):
+                        tools_list.append(tool)
+        return tools_list
 
     async def ask_llm_with_tools(self, prompt: Optional[str] = None) -> list[str]:
         """Send a prompt to the LLM, handle tool calls, and return responses."""
         self.agent_config.history.append(Message(role="user", content=prompt))
         # Only include tools that are allowed in the config
-        tools_list = []
-        for client_name, tools in self.tools.items():
-            if client_name not in self.agent_config.servers or not self.agent_config.servers[client_name].allowed:
-                continue
-            for tool in tools:
-                assert "function" in tool
-                assert "name" in tool["function"]
-                tool_name = tool.get('function', {}).get('name')
-                assert tool_name is not None or tool_name in self.agent_config.servers[client_name].functions
-                if not tool_name or self.agent_config.servers[client_name].functions[tool_name].allowed:
-                    tools_list.append(tool)
-        for client_name, tools in self.local_tools.items():
-            for tool in tools:
-                tools_list.append(tool)
-        self.logger.warning(f"Using tools: {[tool['function']['name'] for tool in tools_list]}")
+        tools_list = self._collect_allowed_tools()
+
+        self.logger.warning(
+            f"Using tools: {[tool['function']['name'] for tool in tools_list]}"
+        )
         try:
             ret: list[str] = []
             while True:
@@ -274,13 +277,10 @@ class LLMClient:
                     for tool_call in message.tool_calls:
                         tool_name = tool_call.function.name
                         tool_args = tool_call.function.arguments
-                        for client_name, tools in chain(self.tools.items(), self.local_tools.items()):
+                        for client_name, tools in self.tools.items():
                             for tool in tools:
                                 if tool["function"]["name"] == tool_name:
-                                    if client_name in self.local_mcp_clients:
-                                        mcp_client = self.local_mcp_clients[client_name]
-                                    else:
-                                        mcp_client = self.mcp_clients[client_name]
+                                    mcp_client = self.mcp_clients[client_name]
                                     self.logger.info(
                                         f"Calling tool '{tool_name}' with args: {tool_args}"
                                     )

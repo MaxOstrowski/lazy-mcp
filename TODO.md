@@ -1,2 +1,3 @@
  - Optional mcp that helps creating an agent with set_description, discover mcps, etc...
- - local tool and mcp make the code messy, unify better
+ - preloading flag
+ - allow/confirm function call

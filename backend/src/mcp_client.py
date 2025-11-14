@@ -37,12 +37,15 @@ class ListToolsResult:
         """Initialize with a list of LocalTool objects."""
         self.tools: list[LocalTool] = tools
 
+
 # Pydantic models for config
+
 
 class Function(BaseModel):
     description: str
     parameters: dict[str, Any]
     allowed: bool = True
+
 
 class MCPServerConfig(BaseModel):
     type: str
@@ -115,9 +118,11 @@ class MCPClient:
             if self.config.functions is None:
                 self.config.functions = {}
             # reset if changes are detected
-            if (tool.name not in self.config.functions 
+            if (
+                tool.name not in self.config.functions
                 or self.config.functions[tool.name].description != func.description
-                or self.config.functions[tool.name].parameters != func.parameters):
+                or self.config.functions[tool.name].parameters != func.parameters
+            ):
                 self.config.functions[tool.name] = func
         return res
 
