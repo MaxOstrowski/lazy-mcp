@@ -6,11 +6,23 @@ Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 from typing import Any
 
 from config_utils import get_config_path, list_available_agents
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
 from mcp_client import MCPServerConfig
-from pydantic import BaseModel
+from models import (
+    ChatRequest,
+    ChatResponse,
+    ClearHistoryResponse,
+    DeleteAgentResponse,
+    HistoryMessage,
+    HistoryResponse,
+    LogEntry,
+    LogsResponse,
+    ServersResponse,
+    UpdateFlagRequest,
+    UpdateFlagResponse,
+)
 
 app = FastAPI()
 app.add_middleware(
@@ -33,41 +45,20 @@ async def get_agent(agent: str) -> LLMClient:
     return agents[agent]
 
 
-class ChatRequest(BaseModel):
-    """Request model for chat endpoint."""
-
-    message: str
-
-
-class ChatResponse(BaseModel):
-    """Response model for chat endpoint."""
-
-    reply: list[str]
-
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(
-    request: ChatRequest, agent: str = Query(..., description="Agent name/ID")
-) -> ChatResponse:
-    """Chat endpoint: send a message to the LLM and get a reply."""
-    llm = await get_agent(agent)
-    reply: list[str] = await llm.ask_llm_with_tools(request.message)
-    llm.save_agent_configuration()
-    return ChatResponse(reply=reply)
-
-
-class LogEntry(BaseModel):
-    """Model for a single log entry."""
-
-    level: str
-    message: str
-    time: str
-
-
-class LogsResponse(BaseModel):
-    """Response model for logs endpoint."""
-
-    logs: list[LogEntry]
+@app.websocket("/chat")
+async def chat(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            agent = data.get("agent", "default")
+            message = data.get("message", "")
+            llm = await get_agent(agent)
+            reply: list[str] = await llm.ask_llm_with_tools(message, websocket)
+            llm.save_agent_configuration()
+            await websocket.send_json({"reply": reply})
+    except WebSocketDisconnect:
+        pass
 
 
 @app.get("/logs", response_model=LogsResponse)
@@ -93,12 +84,6 @@ async def get_logs(
         )
 
 
-class ClearHistoryResponse(BaseModel):
-    """Response model for clear history endpoint."""
-
-    success: bool
-
-
 @app.post("/clear_history", response_model=ClearHistoryResponse)
 async def clear_history(
     agent: str = Query(..., description="Agent name/ID")
@@ -111,15 +96,6 @@ async def clear_history(
         return ClearHistoryResponse(success=True)
     except Exception:
         return ClearHistoryResponse(success=False)
-
-
-class HistoryMessage(BaseModel):
-    role: str
-    content: str
-
-
-class HistoryResponse(BaseModel):
-    messages: list[HistoryMessage]
 
 
 @app.get("/history", response_model=HistoryResponse)
@@ -141,11 +117,6 @@ async def get_agents():
     return list_available_agents()
 
 
-class DeleteAgentResponse(BaseModel):
-    success: bool
-    agents: list[str]
-
-
 # Delete agent endpoint
 @app.delete("/agent", response_model=DeleteAgentResponse)
 async def delete_agent(
@@ -165,8 +136,6 @@ async def delete_agent(
 
 
 # Endpoint to return the complete servers dict from the AgentConfig
-class ServersResponse(BaseModel):
-    servers: dict[str, MCPServerConfig]
 
 
 @app.get("/servers", response_model=ServersResponse)
@@ -179,17 +148,6 @@ async def get_servers(
 
 
 # Request model for updating a server or function flag
-class UpdateFlagRequest(BaseModel):
-    server_name: str
-    function_name: str = ""
-    flag_name: str
-    value: Any
-
-
-# Response model for update flag
-class UpdateFlagResponse(BaseModel):
-    success: bool
-    detail: str = ""
 
 
 # Endpoint to update a flag for a server or function

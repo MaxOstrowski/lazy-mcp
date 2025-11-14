@@ -4,11 +4,11 @@ Provides classes for tool listing and invocation.
 """
 
 from contextlib import AsyncExitStack
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
-from pydantic import BaseModel, Field
+from models import Function, MCPServerConfig
 
 
 class LocalTool:
@@ -36,42 +36,6 @@ class ListToolsResult:
     def __init__(self, tools: list[LocalTool]) -> None:
         """Initialize with a list of LocalTool objects."""
         self.tools: list[LocalTool] = tools
-
-
-# Pydantic models for config
-
-
-class Function(BaseModel):
-    description: str
-    parameters: dict[str, Any]
-    allowed: bool = True
-
-
-class MCPServerConfig(BaseModel):
-    type: str
-    command: str
-    args: Optional[list[str]] = Field(default_factory=list)
-    gallery: Optional[str] = None
-    version: Optional[str] = None
-    functions: Optional[dict[str, Function]] = None
-    allowed: bool = True
-
-
-class Message(BaseModel):
-    role: str
-    content: Optional[str] = None
-    refusal: Optional[Any] = None
-    annotations: Optional[list[Any]] = Field(default_factory=list)
-    audio: Optional[Any] = None
-    function_call: Optional[Any] = None
-    tool_calls: Optional[Any] = None
-    tool_call_id: Optional[str] = None
-
-
-class AgentConfig(BaseModel):
-    description: str = ""
-    servers: dict[str, MCPServerConfig]
-    history: Optional[list[Message]] = Field(default_factory=list)
 
 
 class MCPClient:

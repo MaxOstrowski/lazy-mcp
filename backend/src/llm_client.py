@@ -3,18 +3,17 @@ LLMClient: Handles interaction with Azure/OpenAI and MCP tool clients.
 Provides logging, tool initialization, and chat with tool support.
 """
 
-import importlib.resources
 import inspect
 import json
 import logging
 import os
 from collections import defaultdict
-from itertools import chain
 
 from config_utils import get_config_path
 from dotenv import load_dotenv
-from mcp_client import (AgentConfig, LocalTool, MCPClient, MCPLocalClient,
-                        Message)
+from mcp_client import LocalTool, MCPClient, MCPLocalClient
+from memory_log_handler import MemoryLogHandler
+from models import AgentConfig, Message, ToolCallConfirmation, ToolCallPending
 from openai import AzureOpenAI, BadRequestError
 
 logging.basicConfig(level=logging.WARNING)
@@ -23,38 +22,6 @@ logging.basicConfig(level=logging.WARNING)
 from typing import Any, Optional
 
 LOCAL_MCP_NAMES = ["local"]
-
-
-class MemoryLogHandler(logging.Handler):
-    """In-memory log handler for collecting logs during LLMClient operations."""
-
-    def __init__(self) -> None:
-        """Initialize the memory log handler."""
-        super().__init__()
-        self.records: list[dict[str, str]] = []
-
-    def emit(self, record: logging.LogRecord) -> None:
-        """Store a log record in memory."""
-        self.records.append(
-            {
-                "level": record.levelname,
-                "message": record.getMessage(),
-                "time": self.formatTime(record),
-            }
-        )
-
-    def formatTime(self, record: logging.LogRecord) -> str:
-        """Format the log record time as a string."""
-        import datetime
-
-        ct = datetime.datetime.fromtimestamp(record.created)
-        return ct.strftime("%Y-%m-%d %H:%M:%S")
-
-    def get_and_clear_logs(self) -> list[dict[str, str]]:
-        """Return and clear all stored log records."""
-        logs = self.records.copy()
-        self.records.clear()
-        return logs
 
 
 class LLMClient:
@@ -248,10 +215,11 @@ class LLMClient:
                         tools_list.append(tool)
         return tools_list
 
-    async def ask_llm_with_tools(self, prompt: Optional[str] = None) -> list[str]:
-        """Send a prompt to the LLM, handle tool calls, and return responses."""
+    async def ask_llm_with_tools(
+        self, prompt: Optional[str] = None, websocket=None
+    ) -> list[str]:
+        """Send a prompt to the LLM, handle tool calls, and return responses. If websocket is provided, request frontend confirmation before tool call."""
         self.agent_config.history.append(Message(role="user", content=prompt))
-        # Only include tools that are allowed in the config
         tools_list = self._collect_allowed_tools()
 
         self.logger.warning(
@@ -277,26 +245,60 @@ class LLMClient:
                     for tool_call in message.tool_calls:
                         tool_name = tool_call.function.name
                         tool_args = tool_call.function.arguments
+                        tool_desc = None
                         for client_name, tools in self.tools.items():
                             for tool in tools:
                                 if tool["function"]["name"] == tool_name:
+                                    tool_desc = tool["function"].get("description", "")
                                     mcp_client = self.mcp_clients[client_name]
-                                    self.logger.info(
-                                        f"Calling tool '{tool_name}' with args: {tool_args}"
-                                    )
-                                    tool_result = await mcp_client.call_tool(
-                                        tool_name, json.loads(tool_args)
-                                    )
-                                    self.logger.info(
-                                        f"Tool '{tool_name}' returned: {tool_result}"
-                                    )
-                                    self.agent_config.history.append(
-                                        Message(
-                                            role="tool",
-                                            tool_call_id=getattr(tool_call, "id", None),
-                                            content=str(tool_result),
+                                    # Request confirmation from frontend
+                                    confirmed = True
+                                    if websocket is not None:
+                                        payload = ToolCallPending(
+                                            name=tool_name,
+                                            args=tool_args,
+                                            description=tool_desc,
+                                        ).model_dump()
+                                        await websocket.send_json(
+                                            {"tool_call_pending": payload}
                                         )
-                                    )
+                                        # Wait for confirmation
+                                        resp = await websocket.receive_json()
+                                        # Validate confirmation using model
+                                        try:
+                                            confirmation = ToolCallConfirmation(**resp)
+                                            confirmed = confirmation.tool_call_confirmed
+                                        except Exception:
+                                            confirmed = False
+                                    if confirmed:
+                                        self.logger.info(
+                                            f"Calling tool '{tool_name}' with args: {tool_args}"
+                                        )
+                                        tool_result = await mcp_client.call_tool(
+                                            tool_name, json.loads(tool_args)
+                                        )
+                                        self.logger.info(
+                                            f"Tool '{tool_name}' returned: {tool_result}"
+                                        )
+                                        self.agent_config.history.append(
+                                            Message(
+                                                role="tool",
+                                                tool_call_id=getattr(
+                                                    tool_call, "id", None
+                                                ),
+                                                content=str(tool_result),
+                                            )
+                                        )
+                                    else:
+                                        self.agent_config.history.append(
+                                            Message(
+                                                role="tool",
+                                                tool_call_id=getattr(
+                                                    tool_call, "id", None
+                                                ),
+                                                content="rejected by user",
+                                            )
+                                        )
                 else:
                     break
         except BadRequestError as e:

@@ -69,12 +69,9 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
       if (window.confirm(`Are you sure you want to delete agent '${selected}'?`)) {
         setDeleteAgent(selected);
         await handleDeleteAgent(selected);
-        setDeleteAgent("");
-        prevDeleteAgent.current = ""; // Reset so confirmation shows again next time
-      } else {
-        setDeleteAgent("");
-        prevDeleteAgent.current = ""; // Reset so confirmation shows again next time
       }
+      setDeleteAgent("");
+      prevDeleteAgent.current = ""; // Reset so confirmation shows again next time
     } else {
       setDeleteAgent(selected);
       prevDeleteAgent.current = selected;
@@ -249,6 +246,10 @@ function App() {
   const [agent, setAgent] = useState('default');
   const [agents, setAgents] = useState(['default']);
   const messagesEndRef = useRef(null);
+  // Tool call confirmation modal state
+  const [toolCallPending, setToolCallPending] = useState(null);
+  const [toolCallResolve, setToolCallResolve] = useState(null);
+  // (moved below to avoid redeclaration)
 
   // Delete selected agent (now takes agentName as argument)
   const handleDeleteAgent = async (agentName) => {
@@ -341,30 +342,52 @@ function App() {
     }
   }, [messages]);
 
-  const sendMessage = async e => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    setMessages(msgs => [...msgs, { role: 'user', content: input }]);
-    setInput('');
-    try {
-      const response = await fetch(`/chat?agent=${encodeURIComponent(agent)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
-      });
-      const data = await response.json();
+  const ws = useRef(null);
+  useEffect(() => {
+    ws.current = new WebSocket(`ws://${window.location.hostname}:8000/chat`);
+    ws.current.onopen = () => {};
+    ws.current.onclose = () => {};
+    ws.current.onerror = () => {};
+    ws.current.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
       if (Array.isArray(data.reply)) {
         setMessages(msgs => [
           ...msgs,
           ...data.reply.map(msg => ({ role: 'assistant', content: msg })),
         ]);
-      } else {
-        throw new Error('API reply is not a list of messages');
       }
-      await fetchLogs();
-    } catch (err) {
-      setLogs([{ level: 'ERROR', message: `Error: ${err.message}`, time: '' }]);
+      if (data.tool_call_pending) {
+        setToolCallPending(data.tool_call_pending);
+        await new Promise((resolve) => setToolCallResolve(() => resolve));
+      }
+    };
+    return () => { ws.current && ws.current.close(); };
+  }, []);
+
+  // Tool call confirmation modal
+  const handleToolCallConfirm = (confirmed) => {
+    if (ws.current && toolCallPending) {
+      ws.current.send(JSON.stringify({ tool_call_confirmed: confirmed }));
+      setToolCallPending(null);
+      if (toolCallResolve) {
+        toolCallResolve();
+        setToolCallResolve(null);
+      }
+      if (!confirmed) {
+        setMessages(msgs => [
+          ...msgs,
+          { role: 'tool', content: `Tool call '${toolCallPending.name}' rejected by user.` }
+        ]);
+      }
     }
+  };
+
+  const sendMessage = e => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    setMessages(msgs => [...msgs, { role: 'user', content: input }]);
+    ws.current.send(JSON.stringify({ agent, message: input }));
+    setInput('');
   };
 
   const handleClearHistory = async () => {
@@ -407,6 +430,18 @@ function App() {
         />
         <LogWindow logs={logs} />
       </SplitPane>
+      {toolCallPending && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Tool Call Permission</h3>
+            <p><b>Name:</b> {toolCallPending.name}</p>
+            <p><b>Description:</b> {toolCallPending.description}</p>
+            <div><b>Arguments:</b> <pre>{toolCallPending.args}</pre></div>
+            <button onClick={() => handleToolCallConfirm(true)}>Allow</button>
+            <button onClick={() => handleToolCallConfirm(false)}>Reject</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
