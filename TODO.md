@@ -11,3 +11,4 @@
    - MCP.so
    - TaskPlanner MCP
  - ability to use python programming to automate tasks. variable inputs should come from tool_calls like timesheets, issues etc... python snippets could be stored in long term memory and reexecuted
+ - main executable, installable,aber uvx
