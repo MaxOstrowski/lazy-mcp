@@ -3,6 +3,7 @@
  - run summarizer every 50 chat messages
  - can I share pydantic model between frontend and backend?
  - repeat colours for allow, ask, forbid in user menu/Dialog
+ - reset default button
  - namespaces for mcp functions
  - simplify MCP loading/unloading/listing by only using 1 function (empty string to list, load/unload depending on state, rename to MCP)
  - look into
