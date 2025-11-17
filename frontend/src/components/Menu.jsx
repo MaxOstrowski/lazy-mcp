@@ -49,13 +49,7 @@ function Menu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  useEffect(() => {
-    if (menuOpen) {
-      fetch(`/agent_config?agent=${encodeURIComponent(agent)}`)
-        .then(res => res.json())
-        .then(data => setAgentConfig(data));
-    }
-  }, [menuOpen, agent, setAgentConfig]);
+  // Agent config is now managed in ChatWindow and passed as prop
 
   const handleSelectAgent = async (name) => {
     setAgent(name);

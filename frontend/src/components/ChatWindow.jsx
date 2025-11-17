@@ -1,10 +1,27 @@
-import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Menu from './Menu';
 
 function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, onClearHistory, agent, setAgent, agents, refreshAgents, deleteAgent, setDeleteAgent, handleDeleteAgent, lastTokensUsed, accumTokens }) {
 	const [agentConfig, setAgentConfig] = useState({ description: '', servers: {} });
 	const [expandedServers, setExpandedServers] = useState({});
+
+	// Fetch agent description on mount and whenever agent changes
+	useEffect(() => {
+		async function fetchAgentConfig() {
+			try {
+				const res = await fetch(`/agent_config?agent=${encodeURIComponent(agent)}`);
+				if (res.ok) {
+					const data = await res.json();
+					setAgentConfig(data);
+				} else {
+					setAgentConfig({ description: '', servers: {} });
+				}
+			} catch {
+				setAgentConfig({ description: '', servers: {} });
+			}
+		}
+		fetchAgentConfig();
+	}, [agent]);
 
 	return (
 		<div className="chat-window">

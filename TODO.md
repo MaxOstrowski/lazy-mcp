@@ -1,7 +1,8 @@
  - Optional mcp that helps creating an agent with set_description, discover mcps, etc...
  - preloading flag
  - run summarizer every 50 chat messages
- - can I share pydantic model between frontend and backend?
+ - can I share pydantic model between frontend and backend? OpenAPI
+ - OAuth for LLM and for external MCP's
  - repeat colours for allow, ask, forbid in user menu/Dialog
  - reset default button
  - namespaces for mcp functions
