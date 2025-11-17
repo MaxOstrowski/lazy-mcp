@@ -49,7 +49,6 @@ function Menu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  // Agent config is now managed in ChatWindow and passed as prop
 
   const handleSelectAgent = async (name) => {
     setAgent(name);

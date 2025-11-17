@@ -12,10 +12,22 @@ function ToolCallModal({ toolCallPending, handleToolCallConfirm }) {
         <div className="modal-confirm-label">
           <label><b>Confirmation Option:</b></label>
         </div>
-        <button onClick={() => handleToolCallConfirm('always_ask')}>Confirm</button>
-        <button onClick={() => handleToolCallConfirm('always_confirmed')}>Always confirm</button>
-        <button onClick={() => handleToolCallConfirm('always_rejected')}>Always Reject</button>
-        <button onClick={() => handleToolCallConfirm('reject')}>Reject</button>
+        <button onClick={() => handleToolCallConfirm('always_ask')}>
+          <span className="token-orange toolcall-icon">?</span>
+          Confirm
+        </button>
+        <button onClick={() => handleToolCallConfirm('always_confirmed')}>
+          <span className="token-green toolcall-icon">✔</span>
+          Always confirm
+        </button>
+        <button onClick={() => handleToolCallConfirm('always_rejected')}>
+          <span className="token-red toolcall-icon">✖</span>
+          Always Reject
+        </button>
+        <button onClick={() => handleToolCallConfirm('reject')}>
+          <span className="token-red toolcall-icon">✖</span>
+          Reject
+        </button>
       </div>
     </div>
   );

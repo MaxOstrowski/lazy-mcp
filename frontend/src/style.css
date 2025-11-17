@@ -1,3 +1,10 @@
+/* ToolCallModal icon style for confirmation buttons */
+.toolcall-icon {
+  font-weight: bold;
+  font-size: 1.2em;
+  margin-right: 8px;
+  vertical-align: middle;
+}
 /* Bold style for chat window agent label */
 .agent-header .agent-label {
   font-weight: bold;
