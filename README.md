@@ -1,19 +1,33 @@
-This program provides a chat interface for different LLM agents. You can easily handle tools via MCP.
+# lazy-mcp: Unified CLI and project structure
 
+This package provides a single command (`lazy-mcp`) to build and run the backend and frontend, serving the app and opening the browser automatically.
 
-## Warning
-This program stores your chat history in your local config folder:
-Windows:
-C:\Users\<username>\AppData\Local\lazy_mcp
+## Usage
 
-Linux:
-/home/<username>/.config/lazy_mcp
+```bash
+pip install .
+lazy-mcp
+```
 
-macOS:
-/Users/<username>/Library/Application Support/lazy_mcp
+- On first run, the frontend is built (requires npm).
+- The backend serves the frontend and API.
+- The browser opens automatically to the correct port.
 
-## Warning
-Be careful with what you share with your LLM provider.
+## Project Structure
 
-## Warning
-This program uses your LLM tokens. Depending on your subscription, this can cost you money.
+- `lazy_mcp/__main__.py`: Top-level CLI entry point
+- `backend/src/main.py`: Backend server logic (exposed as `run_server`)
+- `frontend/`: React app (built with Vite)
+
+## Development
+- Edit backend logic in `backend/src/`
+- Edit frontend in `frontend/src/`
+- Default agent config in `backend/resources/default.json`
+
+## Packaging
+- PyPI installable via `pyproject.toml`
+- Includes resource files for config reset
+
+---
+
+For more details, see individual `README.md` files in `backend/` and `frontend/`.
