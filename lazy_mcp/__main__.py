@@ -35,6 +35,13 @@ def run_vite_dev(frontend_dir: Path, port: int):
         proc = subprocess.Popen(["npx", "vite"], cwd=frontend_dir)
     return proc
 
+def run_server(port: int, backend_dir: Path):
+    """Run the backend server in production mode (no reload)."""
+    print("Starting backend server...")
+    subprocess.run([
+        sys.executable, "-m", "uvicorn", "api:app", "--host", "127.0.0.1", "--port", str(port)
+    ], cwd=backend_dir)
+
 def open_browser(port: int):
     url = f"http://localhost:{port}"
     threading.Timer(1.5, lambda: webbrowser.open(url)).start()
@@ -68,7 +75,7 @@ def main():
     else:
         build_frontend(frontend_dir)
         open_browser(port)
-        run_server(port=port, frontend_dir=frontend_dir)
+        run_server(port=port, backend_dir=backend_dir)
 
 if __name__ == "__main__":
     main()

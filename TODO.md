@@ -20,3 +20,4 @@
  - deliver standard config, merge with existing config
  - react-split-pane seems to old?
  - changing confirmation string to enum warning
+ - remove hot loading from main. Installation should compile react tuff and add it to install, not main but something like wheel building things

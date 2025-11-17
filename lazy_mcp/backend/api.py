@@ -8,6 +8,8 @@ from typing import Any
 from config_utils import get_config_path, list_available_agents
 from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from llm_client import LLMClient
 from models import (
     AgentConfig,
@@ -22,6 +24,7 @@ from models import (
     UpdateFlagResponse,
 )
 
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # Global dictionary to hold all agent LLMClients
 agents: dict[str, LLMClient] = {}
@@ -175,3 +177,29 @@ async def update_flag(
         return UpdateFlagResponse(success=True)
     except Exception as e:
         return UpdateFlagResponse(success=False, detail=str(e))
+
+
+
+
+# Mount frontend static files at /static and /assets
+# this needs to be executed last to avoid overriding other routes
+root_dir = Path(__file__).parent.parent.parent
+frontend_dist = root_dir / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_dist), html=True), name="static")
+    assets_dir = frontend_dist / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+    from fastapi.responses import FileResponse
+    from fastapi import Request
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str, request: Request):
+        # Only serve index.html for non-API, non-static, non-assets paths
+        if full_path.startswith("api") or full_path.startswith("static") or full_path.startswith("assets"):
+            return {"detail": "Not found"}, 404
+        index_file = frontend_dist / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
+        return {"detail": "index.html not found"}, 404
+else:
+    print(f"Warning: Frontend build directory not found: {frontend_dist}")
