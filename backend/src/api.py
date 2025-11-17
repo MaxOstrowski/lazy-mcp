@@ -10,6 +10,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDis
 from fastapi.middleware.cors import CORSMiddleware
 from llm_client import LLMClient
 from models import (
+    AgentConfig,
     ClearHistoryResponse,
     DeleteAgentResponse,
     HistoryMessage,
@@ -19,7 +20,6 @@ from models import (
     MCPServerConfig,
     UpdateFlagRequest,
     UpdateFlagResponse,
-    AgentConfig,
 )
 
 app = FastAPI()
@@ -35,31 +35,36 @@ app.add_middleware(
 # Global dictionary to hold all agent LLMClients
 agents: dict[str, LLMClient] = {}
 
+
 async def get_agent(agent: str) -> LLMClient:
     if agent not in agents:
         agents[agent] = LLMClient(agent)
         await agents[agent].initialize_tools()
     return agents[agent]
 
+
 # Endpoint to reset the default agent config
 @app.post("/reset_default", response_model=AgentConfig)
 async def reset_default():
     """Reset the default agent configuration to its initial state."""
-    llm = await get_agent("default")
-    llm.agent_config.description = "You are an LLM client to help to build other agents in the same format as yourself."
-    llm.agent_config.servers = {
-        "microsoft/markitdown": MCPServerConfig(
-            type="stdio",
-            command="uvx",
-            args=["markitdown-mcp==0.0.1a4"],
-        )
-    }
+    import importlib.resources
+    import shutil
+    from pathlib import Path
 
-    llm.agent_config.history = []
-    llm.save_agent_configuration()
-    del agents["default"]
+    # Find the resource file
+    try:
+        with importlib.resources.path("resources", "default.json") as default_json_path:
+            user_config_path = get_config_path("default")
+            shutil.copy(default_json_path, user_config_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to reset default agent: {e}")
+
+    # Remove from memory and reload
+    if "default" in agents:
+        del agents["default"]
     llm = await get_agent("default")
     return llm.agent_config
+
 
 @app.websocket("/chat")
 async def chat(websocket: WebSocket):

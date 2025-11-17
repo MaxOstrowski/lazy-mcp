@@ -290,16 +290,14 @@ class LLMClient:
                                 confirmation_state_update = ConfirmationState.ALWAYS_ASK
                             else:
                                 confirmation_state_update = confirmation_state
-                            if (
-                                confirmation_state_update
-                                != self.agent_config.servers[client_name].functions[tool_name].confirmed
-                            ):
-                                self.agent_config.servers[client_name].functions[
-                                    tool_name
-                                ].confirmed = confirmation_state_update
+                            if confirmation_state_update != self.agent_config.servers[client_name].functions[tool_name].confirmed:
+                                self.agent_config.servers[client_name].functions[tool_name].confirmed = confirmation_state_update
                                 self.save_agent_configuration()
 
-                        if confirmation_state not in (ConfirmationState.ALWAYS_REJECTED, ConfirmationStateResponse.REJECT):
+                        if confirmation_state not in (
+                            ConfirmationState.ALWAYS_REJECTED,
+                            ConfirmationStateResponse.REJECT,
+                        ):
                             self.logger.info(f"Calling tool '{tool_name}' with args: {tool_args}")
                             tool_result = await mcp_client.call_tool(tool_name, json.loads(tool_args))
                             self.logger.info(f"Tool '{tool_name}' returned: {tool_result}")

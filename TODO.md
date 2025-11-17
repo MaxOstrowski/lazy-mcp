@@ -3,7 +3,6 @@
  - run summarizer every 50 chat messages
  - can I share pydantic model between frontend and backend? OpenAPI
  - OAuth for LLM and for external MCP's
- - reset default button
  - namespaces for mcp functions
  - simplify MCP loading/unloading/listing by only using 1 function (empty string to list, load/unload depending on state, rename to MCP)
  - look into
