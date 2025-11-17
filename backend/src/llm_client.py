@@ -178,7 +178,9 @@ class LLMClient:
         self.logger.debug(f"Loading MCP client '{mcp_name}'")
         if mcp_name in self.agent_config.servers:
             self.mcp_clients[mcp_name] = MCPClient(mcp_name, self.agent_config.servers[mcp_name])
-            return await self.initialize_tools()
+            ret = await self.initialize_tools()
+            self.save_agent_configuration()
+            return ret
         else:
             return str({"Error": f"MCP client '{mcp_name}' not found in configuration"})
 

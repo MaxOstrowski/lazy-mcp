@@ -13,6 +13,7 @@ export default defineConfig({
       '/agent': 'http://localhost:8000',
       '/agent_config': 'http://localhost:8000',
       '/agent_config/update_flag': 'http://localhost:8000',
+      '/reset_default': 'http://localhost:8000',
     },
   },
 });

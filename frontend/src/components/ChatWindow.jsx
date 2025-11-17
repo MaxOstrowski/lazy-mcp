@@ -27,7 +27,30 @@ function ChatWindow({ messages, input, setInput, sendMessage, messagesEndRef, on
 		<div className="chat-window">
 			<div className="agent-header">
 				<span className="agent-label">Agent:</span>
-				<span className="agent-name" title={agentConfig.description || "No description"}>{agent}</span>
+				<span className="agent-name" title={agentConfig.description || "No description"}>
+					{agent}
+							 {agent === 'default' && (
+								 <button
+									 className="agent-reset-btn"
+									 title="Reset default agent"
+									 onClick={async () => {
+										 try {
+											 const res = await fetch('/reset_default', { method: 'POST' });
+											 if (res.ok) {
+												 const data = await res.json();
+												   setAgentConfig(data);
+												   setAgent('default');
+												   if (typeof setInput === 'function') setInput('');
+												   if (typeof setMessages === 'function') setMessages([]);
+												   if (typeof onClearHistory === 'function') onClearHistory();
+											 }
+										 } catch {}
+									 }}
+								 >
+									 &#x21bb; Reset
+								 </button>
+							 )}
+				</span>
 			</div>
 			<div className="chat-header">
 				<Menu

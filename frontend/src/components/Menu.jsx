@@ -49,7 +49,14 @@ function Menu({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-
+  // Fetch agent config when menu is opened to update server list
+  useEffect(() => {
+    if (menuOpen) {
+      fetch(`/agent_config?agent=${encodeURIComponent(agent)}`)
+        .then(res => res.json())
+        .then(data => setAgentConfig(data));
+    }
+  }, [menuOpen, agent, setAgentConfig]);
   const handleSelectAgent = async (name) => {
     setAgent(name);
     setMenuOpen(false);

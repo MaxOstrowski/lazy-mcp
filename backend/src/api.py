@@ -16,6 +16,7 @@ from models import (
     HistoryResponse,
     LogEntry,
     LogsResponse,
+    MCPServerConfig,
     UpdateFlagRequest,
     UpdateFlagResponse,
     AgentConfig,
@@ -34,13 +35,31 @@ app.add_middleware(
 # Global dictionary to hold all agent LLMClients
 agents: dict[str, LLMClient] = {}
 
-
 async def get_agent(agent: str) -> LLMClient:
     if agent not in agents:
         agents[agent] = LLMClient(agent)
         await agents[agent].initialize_tools()
     return agents[agent]
 
+# Endpoint to reset the default agent config
+@app.post("/reset_default", response_model=AgentConfig)
+async def reset_default():
+    """Reset the default agent configuration to its initial state."""
+    llm = await get_agent("default")
+    llm.agent_config.description = "You are an LLM client to help to build other agents in the same format as yourself."
+    llm.agent_config.servers = {
+        "microsoft/markitdown": MCPServerConfig(
+            type="stdio",
+            command="uvx",
+            args=["markitdown-mcp==0.0.1a4"],
+        )
+    }
+
+    llm.agent_config.history = []
+    llm.save_agent_configuration()
+    del agents["default"]
+    llm = await get_agent("default")
+    return llm.agent_config
 
 @app.websocket("/chat")
 async def chat(websocket: WebSocket):
