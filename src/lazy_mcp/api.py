@@ -5,13 +5,12 @@ Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 
 from typing import Any
 
-from config_utils import get_config_path, list_available_agents
+from lazy_mcp.config_utils import get_config_path, list_available_agents
 from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
-from llm_client import LLMClient
-from models import (
+from lazy_mcp.llm_client import LLMClient
+from lazy_mcp.models import (
     AgentConfig,
     ClearHistoryResponse,
     DeleteAgentResponse,
@@ -19,7 +18,6 @@ from models import (
     HistoryResponse,
     LogEntry,
     LogsResponse,
-    MCPServerConfig,
     UpdateFlagRequest,
     UpdateFlagResponse,
 )
@@ -181,25 +179,26 @@ async def update_flag(
 
 
 
-# Mount frontend static files at /static and /assets
-# this needs to be executed last to avoid overriding other routes
-root_dir = Path(__file__).parent.parent.parent
-frontend_dist = root_dir / "frontend" / "dist"
-if frontend_dist.exists():
-    app.mount("/static", StaticFiles(directory=str(frontend_dist), html=True), name="static")
-    assets_dir = frontend_dist / "assets"
+# --- Mount frontend static files from installed package using importlib.resources ---
+import importlib.resources as pkg_resources
+from fastapi.responses import FileResponse
+from fastapi import Request
+
+try:
+    dist_path = pkg_resources.files("lazy_mcp").joinpath("frontend/dist")
+    app.mount("/static", StaticFiles(directory=str(dist_path), html=True), name="static")
+    assets_dir = dist_path / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-    from fastapi.responses import FileResponse
-    from fastapi import Request
+
+    # Catch-all route for React frontend
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str, request: Request):
-        # Only serve index.html for non-API, non-static, non-assets paths
         if full_path.startswith("api") or full_path.startswith("static") or full_path.startswith("assets"):
             return {"detail": "Not found"}, 404
-        index_file = frontend_dist / "index.html"
+        index_file = dist_path / "index.html"
         if index_file.exists():
             return FileResponse(str(index_file))
         return {"detail": "index.html not found"}, 404
-else:
-    print(f"Warning: Frontend build directory not found: {frontend_dist}")
+except Exception as e:
+    print(f"Warning: Could not mount frontend static files: {e}")

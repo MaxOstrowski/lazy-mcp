@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
-from models import Function, MCPServerConfig
+from lazy_mcp.models import Function, MCPServerConfig
 
 
 class LocalTool:

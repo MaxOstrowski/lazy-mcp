@@ -31,3 +31,7 @@ lazy-mcp
 ---
 
 For more details, see individual `README.md` files in `backend/` and `frontend/`.
+
+
+Goal:
+uvx --from https://github.com/MaxOstrowski/lazy-mcp.git lazy-mcp

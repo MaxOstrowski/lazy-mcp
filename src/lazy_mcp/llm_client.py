@@ -9,11 +9,12 @@ import logging
 import os
 from collections import defaultdict
 
-from config_utils import DEFAULT_AGENT_NAME, get_config_path
+from lazy_mcp.config_utils import DEFAULT_AGENT_NAME, get_config_path
 from dotenv import load_dotenv
-from mcp_client import LocalTool, MCPClient, MCPLocalClient
-from memory_log_handler import MemoryLogHandler
-from models import (
+from pathlib import Path
+from lazy_mcp.mcp_client import LocalTool, MCPClient, MCPLocalClient
+from lazy_mcp.memory_log_handler import MemoryLogHandler
+from lazy_mcp.models import (
     AgentConfig,
     ChatResponse,
     ConfirmationState,
@@ -37,7 +38,7 @@ class LLMClient:
 
     def __init__(self, agent_name: str = DEFAULT_AGENT_NAME) -> None:
         """Initialize the LLMClient, load config, and set up logging and tools."""
-        load_dotenv()
+        load_dotenv(dotenv_path=Path.cwd() / ".env")
         self._set_logger()
         self.api_key = os.getenv("AZURE_OPENAI_KEY") or os.getenv("OPENAI_API_KEY")
         self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("OPENAI_API_ENDPOINT")

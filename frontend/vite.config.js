@@ -16,4 +16,8 @@ export default defineConfig({
       '/reset_default': 'http://localhost:8000',
     },
   },
+  build: {
+    outDir: '../src/lazy_mcp/static',
+    emptyOutDir: true
+  }
 });
