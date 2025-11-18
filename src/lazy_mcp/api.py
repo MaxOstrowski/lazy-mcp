@@ -183,9 +183,9 @@ from fastapi.responses import FileResponse
 from fastapi import Request
 
 try:
-    dist_path = pkg_resources.files("lazy_mcp").joinpath("frontend/dist")
-    app.mount("/static", StaticFiles(directory=str(dist_path), html=True), name="static")
-    assets_dir = dist_path / "assets"
+    static_path = pkg_resources.files("lazy_mcp").joinpath("static")
+    app.mount("/static", StaticFiles(directory=str(static_path), html=True), name="static")
+    assets_dir = static_path / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
@@ -194,7 +194,7 @@ try:
     async def serve_frontend(full_path: str, request: Request):
         if full_path.startswith("api") or full_path.startswith("static") or full_path.startswith("assets"):
             return {"detail": "Not found"}, 404
-        index_file = dist_path / "index.html"
+        index_file = static_path / "index.html"
         if index_file.exists():
             return FileResponse(str(index_file))
         return {"detail": "index.html not found"}, 404
