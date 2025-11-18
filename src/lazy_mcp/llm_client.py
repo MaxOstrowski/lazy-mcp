@@ -82,7 +82,7 @@ class LLMClient:
         self.clear_history()
         self.agent_config.history.append(Message(role="user", content=summary))
         self.logger.debug(f"Conversation history summarized. {summary}")
-    
+
     def _init_local_tools(self) -> None:
         """Initialize local MCP client with built-in tools."""
 
@@ -160,7 +160,7 @@ class LLMClient:
         """Set up the local logger and memory handler."""
 
         self.logger = logging.getLogger(f"LLMClient_{id(self)}")
-        self.logger.setLevel(logging.INFO)
+        self.logger.setLevel(logging.DEBUG)
         self.memory_handler = MemoryLogHandler()
         formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
         self.memory_handler.setFormatter(formatter)

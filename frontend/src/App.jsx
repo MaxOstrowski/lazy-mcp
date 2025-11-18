@@ -34,7 +34,9 @@ function App() {
   }, [agent, fetchHistory]);
 
   useEffect(() => {
-    fetchLogs();
+    fetchLogs(); // initial fetch
+    const interval = setInterval(fetchLogs, 3000); // poll every 3 seconds
+    return () => clearInterval(interval);
   }, [fetchLogs]);
 
   useEffect(() => {

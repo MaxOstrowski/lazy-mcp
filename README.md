@@ -1,37 +1,31 @@
-# lazy-mcp: Unified CLI and project structure
+# lazy-mcp: Chat Agent with lazy loading MCP capabilities
 
-This package provides a single command (`lazy-mcp`) to build and run the backend and frontend, serving the app and opening the browser automatically.
+This package provides a single command (`lazy-mcp`) to run a backend server and fowards the user to a browser to interact with the chat.
 
 ## Usage
 
 ```bash
+uvx https://github.com/MaxOstrowski/lazy-mcp.git
+```
+
+or from source
+
+```bash
+hatch build
 pip install .
 lazy-mcp
 ```
 
-- On first run, the frontend is built (requires npm).
-- The backend serves the frontend and API.
-- The browser opens automatically to the correct port.
 
-## Project Structure
+## Authorization
 
-- `lazy_mcp/__main__.py`: Top-level CLI entry point
-- `backend/src/main.py`: Backend server logic (exposed as `run_server`)
-- `frontend/`: React app (built with Vite)
+An .env file is needed with the AZURE_OPENAI credentials:
+
+AZURE_OPENAI_KEY=your_key_here
+AZURE_OPENAI_ENDPOINT=https://oai-service-pro-westeu-1.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=gpt-4.1
+AZURE_OPENAI_MODEL=gpt-4.1
+AZURE_OPENAI_API_VERSION=2025-01-01-preview
 
 ## Development
-- Edit backend logic in `backend/src/`
-- Edit frontend in `frontend/src/`
-- Default agent config in `backend/resources/default.json`
-
-## Packaging
-- PyPI installable via `pyproject.toml`
-- Includes resource files for config reset
-
----
-
-For more details, see individual `README.md` files in `backend/` and `frontend/`.
-
-
-Goal:
-uvx --from https://github.com/MaxOstrowski/lazy-mcp.git lazy-mcp
+- If the frontend has changed the hatch command has to be reexecuted to create the static frontend files
