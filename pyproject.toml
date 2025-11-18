@@ -1,6 +1,6 @@
 [tool.hatch.build.targets.wheel]
 packages = ["src/lazy_mcp"]
-include = ["src/lazy_mcp/static/**"]
+include = ["src/lazy_mcp/static/**", "src/lazy_mcp/resources/**"]
 
 [build-system]
 requires = ["hatchling"]
@@ -27,7 +27,7 @@ dependencies = [
 
 [tool.hatch.build.targets.sdist]
 packages = ["src/lazy_mcp"]
-include = ["src/lazy_mcp/static/**"]
+include = ["src/lazy_mcp/static/**", "src/lazy_mcp/resources/**"]
 
 [project.scripts]
 lazy-mcp = "lazy_mcp.__main__:main"

@@ -4,6 +4,9 @@ Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 """
 
 from typing import Any
+import importlib.resources
+import shutil
+
 
 from lazy_mcp.config_utils import get_config_path, list_available_agents
 from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -47,15 +50,10 @@ async def get_agent(agent: str) -> LLMClient:
 @app.post("/reset_default", response_model=AgentConfig)
 async def reset_default():
     """Reset the default agent configuration to its initial state."""
-    import importlib.resources
-    import shutil
-    from pathlib import Path
-
-    # Find the resource file
     try:
-        with importlib.resources.path("lazy_mcp.resources", "default.json") as default_json_path:
-            user_config_path = get_config_path("default")
-            shutil.copy(default_json_path, user_config_path)
+        default_json_path = importlib.resources.files("lazy_mcp.resources").joinpath("default.json")
+        user_config_path = get_config_path("default")
+        shutil.copy(default_json_path, user_config_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to reset default agent: {e}")
 
