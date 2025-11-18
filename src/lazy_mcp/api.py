@@ -53,7 +53,7 @@ async def reset_default():
 
     # Find the resource file
     try:
-        with importlib.resources.path("resources", "default.json") as default_json_path:
+        with importlib.resources.path("lazy_mcp.resources", "default.json") as default_json_path:
             user_config_path = get_config_path("default")
             shutil.copy(default_json_path, user_config_path)
     except Exception as e:
