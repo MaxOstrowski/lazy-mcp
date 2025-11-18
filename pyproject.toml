@@ -1,11 +1,3 @@
-[tool.hatch.build.targets.wheel]
-packages = ["src/lazy_mcp"]
-include = ["src/lazy_mcp/static/**", "src/lazy_mcp/resources/**"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "lazy-mcp"
 version = "0.1.0"
@@ -25,6 +17,15 @@ dependencies = [
 		"uv"
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lazy_mcp"]
+include = ["src/lazy_mcp/static/**", "src/lazy_mcp/resources/**"]
+
 [tool.hatch.build.targets.sdist]
 packages = ["src/lazy_mcp"]
 include = ["src/lazy_mcp/static/**", "src/lazy_mcp/resources/**"]
@@ -37,3 +38,10 @@ dependencies = []
 commands = [
 	"python build_frontend.py"
 ]
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+line_length = 120

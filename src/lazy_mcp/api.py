@@ -3,15 +3,15 @@ API endpoints for Lazy MCP backend using FastAPI.
 Provides chat and log retrieval endpoints, and initializes LLM tools on startup.
 """
 
-from typing import Any
 import importlib.resources
 import shutil
+from typing import Any
 
-
-from lazy_mcp.config_utils import get_config_path, list_available_agents
 from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+from lazy_mcp.config_utils import get_config_path, list_available_agents
 from lazy_mcp.llm_client import LLMClient
 from lazy_mcp.models import (
     AgentConfig,
@@ -24,7 +24,6 @@ from lazy_mcp.models import (
     UpdateFlagRequest,
     UpdateFlagResponse,
 )
-
 
 app = FastAPI()
 app.add_middleware(
@@ -175,12 +174,11 @@ async def update_flag(
         return UpdateFlagResponse(success=False, detail=str(e))
 
 
-
-
 # --- Mount frontend static files from installed package using importlib.resources ---
 import importlib.resources as pkg_resources
-from fastapi.responses import FileResponse
+
 from fastapi import Request
+from fastapi.responses import FileResponse
 
 try:
     static_path = pkg_resources.files("lazy_mcp").joinpath("static")
@@ -198,5 +196,6 @@ try:
         if index_file.exists():
             return FileResponse(str(index_file))
         return {"detail": "index.html not found"}, 404
+
 except Exception as e:
     print(f"Warning: Could not mount frontend static files: {e}")

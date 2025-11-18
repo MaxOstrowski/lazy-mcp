@@ -1,14 +1,18 @@
+import importlib.resources as pkg_resources
 import threading
 import webbrowser
-from fastapi.staticfiles import StaticFiles
-import uvicorn
-from lazy_mcp import api
-import importlib.resources as pkg_resources
 from pathlib import Path
+
+import uvicorn
+from fastapi.staticfiles import StaticFiles
+
+from lazy_mcp import api
+
 
 def open_browser(port: int):
     url = f"http://localhost:{port}"
     threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+
 
 def main(port=8000):
     """
@@ -19,6 +23,7 @@ def main(port=8000):
     api.app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="frontend")
     open_browser(port)
     uvicorn.run(api.app, host="127.0.0.1", port=port)
+
 
 if __name__ == "__main__":
     main(port=8000)

@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
+
 from lazy_mcp.models import Function, MCPServerConfig
 
 

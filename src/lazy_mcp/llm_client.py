@@ -8,10 +8,12 @@ import json
 import logging
 import os
 from collections import defaultdict
+from pathlib import Path
+
+from dotenv import load_dotenv
+from openai import AzureOpenAI, BadRequestError
 
 from lazy_mcp.config_utils import DEFAULT_AGENT_NAME, get_config_path
-from dotenv import load_dotenv
-from pathlib import Path
 from lazy_mcp.mcp_client import LocalTool, MCPClient, MCPLocalClient
 from lazy_mcp.memory_log_handler import MemoryLogHandler
 from lazy_mcp.models import (
@@ -23,7 +25,6 @@ from lazy_mcp.models import (
     ToolCallConfirmation,
     ToolCallPending,
 )
-from openai import AzureOpenAI, BadRequestError
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -286,13 +287,20 @@ class LLMClient:
                             ).model_dump()
                             await websocket.send_json({"tool_call_pending": payload})
                             # Wait for confirmation and update state
-                            confirmation_state = ToolCallConfirmation(**await websocket.receive_json()).tool_call_confirmed
+                            confirmation_state = ToolCallConfirmation(
+                                **await websocket.receive_json()
+                            ).tool_call_confirmed
                             if confirmation_state == ConfirmationStateResponse.REJECT:
                                 confirmation_state_update = ConfirmationState.ALWAYS_ASK
                             else:
                                 confirmation_state_update = confirmation_state
-                            if confirmation_state_update != self.agent_config.servers[client_name].functions[tool_name].confirmed:
-                                self.agent_config.servers[client_name].functions[tool_name].confirmed = confirmation_state_update
+                            if (
+                                confirmation_state_update
+                                != self.agent_config.servers[client_name].functions[tool_name].confirmed
+                            ):
+                                self.agent_config.servers[client_name].functions[
+                                    tool_name
+                                ].confirmed = confirmation_state_update
                                 self.save_agent_configuration()
 
                         if confirmation_state not in (
