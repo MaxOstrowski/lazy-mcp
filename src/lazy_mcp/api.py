@@ -11,7 +11,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, WebSocket, WebSocketDis
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from lazy_mcp.config_utils import get_config_path, list_available_agents
+from lazy_mcp.config_utils import SUMMARIZE_THRESHOLD, get_config_path, list_available_agents
 from lazy_mcp.llm_client import LLMClient
 from lazy_mcp.models import (
     AgentConfig,
@@ -73,6 +73,8 @@ async def chat(websocket: WebSocket):
             message = data.get("message", "")
             llm = await get_agent(agent)
             result = await llm.ask_llm_with_tools(message, websocket)
+            if len(llm.agent_config.history) > SUMMARIZE_THRESHOLD:
+                llm.summarize_history()
             llm.save_agent_configuration()
             await websocket.send_json(result.dict())
     except WebSocketDisconnect:

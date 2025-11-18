@@ -16,9 +16,7 @@
 
    - TaskPlanner MCP
  - ability to use python programming to automate tasks. variable inputs should come from tool_calls like timesheets, issues etc... python snippets could be stored in long term memory and reexecuted
- - main executable, installable,aber uvx
  - deliver standard config, merge with existing config
  - react-split-pane seems to old?
  - changing confirmation string to enum warning
- - remove hot loading from main. Installation should compile react tuff and add it to install, not main but something like wheel building things
- - uvx git+https://github.com/foo/bar should already work without --from and without name if name is the same
+ - markdown/json views in chat

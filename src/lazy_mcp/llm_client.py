@@ -70,6 +70,19 @@ class LLMClient:
         """Clear the conversation history."""
         self.agent_config.history = [Message(role="system", content=self.agent_config.description)]
 
+    def summarize_history(self) -> None:
+        """Summarize the conversation history to reduce token usage."""
+        combined_history = "\n".join(f"{msg.role}: {msg.content or ''}" for msg in self.agent_config.history[1:])
+        summary_prompt = f"Summarize the following conversation briefly, keep important details:\n\n{combined_history}"
+        response = self.client.chat.completions.create(
+            model=self.api_deployment,
+            messages=[Message(role="user", content=summary_prompt).model_dump()],
+        )
+        summary = response.choices[0].message.content
+        self.clear_history()
+        self.agent_config.history.append(Message(role="user", content=summary))
+        self.logger.debug(f"Conversation history summarized. {summary}")
+    
     def _init_local_tools(self) -> None:
         """Initialize local MCP client with built-in tools."""
 
