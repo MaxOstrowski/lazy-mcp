@@ -66,7 +66,10 @@ class MCPClient:
     async def list_tools(self) -> Any:
         """List available tools from the connected MCP server."""
         if not self.initialized:
-            await self.connect()
+            try:
+                await self.connect()
+            except Exception as e:
+                raise ConnectionError(f"Failed to connect to MCP server '{self.name}': {e}")
         res = await self.session.list_tools()
         # fill self.config functions
         for tool in res.tools:

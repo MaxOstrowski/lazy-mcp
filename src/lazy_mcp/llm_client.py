@@ -21,6 +21,7 @@ from lazy_mcp.models import (
     ChatResponse,
     ConfirmationState,
     ConfirmationStateResponse,
+    MCPServerConfig,
     Message,
     ToolCallConfirmation,
     ToolCallPending,
@@ -151,7 +152,36 @@ class LLMClient:
                         },
                         "required": ["new_description"],
                     },
-                    function=bind_function(self._change_agent_description),
+                    function=bind_function(self.change_agent_description),
+                ),
+                LocalTool(
+                    name="add_new_mcp_server",
+                    type="function",
+                    description="Add a new MCP server to the agent configuration. Replaces existing ones.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "mcp_name": {
+                                "type": "string",
+                                "description": "Name of the MCP server to add",
+                            },
+                            "command": {
+                                "type": "string",
+                                "description": "Command to start the MCP server",
+                            },
+                            "arguments": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of arguments for the MCP server command",
+                            },
+                            "communication_type": {
+                                "type": "string",
+                                "description": "Type of communication (e.g., 'stdio', 'socket', 'http')",
+                            },
+                        },
+                        "required": ["mcp_name", "command", "arguments", "communication_type"],
+                    },
+                    function=bind_function(self.add_new_mcp_server),
                 ),
             ],
         )
@@ -166,13 +196,23 @@ class LLMClient:
         self.memory_handler.setFormatter(formatter)
         self.logger.addHandler(self.memory_handler)
 
-    def _change_agent_description(self, new_description: str) -> str:
+    def change_agent_description(self, new_description: str) -> str:
         """Change the agent's system description."""
         self.agent_config.description = new_description
         assert len(self.agent_config.history) > 0
         self.agent_config.history[0] = Message(role="system", content=new_description)
         self.save_agent_configuration()
         return "Agent description updated."
+    
+    async def add_new_mcp_server(self, mcp_name: str, command: str, arguments: list[str], communication_type: str) -> None:
+        """Add a new MCP server to the agent configuration. Replaces existing ones."""
+        self.agent_config.servers[mcp_name] = MCPServerConfig(
+            type=communication_type,
+            command=command,
+            args=arguments
+        )
+        self.save_agent_configuration()
+        return await self.load_mcp(mcp_name)
 
     def save_agent_configuration(self):
         """Save the current agent configuration to the configuration file."""
@@ -192,12 +232,16 @@ class LLMClient:
         """Load an MCP client by name and initialize its tools."""
         self.logger.debug(f"Loading MCP client '{mcp_name}'")
         if mcp_name in self.agent_config.servers:
-            self.mcp_clients[mcp_name] = MCPClient(mcp_name, self.agent_config.servers[mcp_name])
-            ret = await self.initialize_tools()
-            self.save_agent_configuration()
-            return ret
+            try:
+                self.mcp_clients[mcp_name] = MCPClient(mcp_name, self.agent_config.servers[mcp_name])
+                ret = await self.initialize_tools()
+                self.save_agent_configuration()
+                return ret
+            except Exception as e:
+                self.logger.error(f"Failed to load MCP client '{mcp_name}': {e}")
+                return {"error": str(e)}
         else:
-            return str({"Error": f"MCP client '{mcp_name}' not found in configuration"})
+            return {"error": f"MCP client '{mcp_name}' not found in configuration"}
 
     def unload_mcp(self, mcp_name: str) -> Optional[str]:
         """Unload an MCP client by name."""
@@ -271,10 +315,11 @@ class LLMClient:
                     await self._handle_tool_calls(message.tool_calls, websocket)
                 else:
                     break
+            return ChatResponse(reply=ret, tokens_used=tokens_used)
         except BadRequestError as e:
             self.logger.error(f"OpenAI content filter triggered: {e}")
-
-        return ChatResponse(reply=ret, tokens_used=tokens_used)
+            self.clear_history()
+            return ChatResponse(reply = [f"Error: {str(e)}"], tokens_used=tokens_used)
 
     async def _handle_tool_calls(self, tool_calls, websocket=None):
         """Handle tool calls from LLM response."""
